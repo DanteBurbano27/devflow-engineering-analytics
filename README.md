@@ -49,22 +49,50 @@ GitHub REST API + GH Archive
 * GitHub Actions
 * Looker Studio
 
+## Local development
+
+Create and activate a virtual environment:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements-dev.txt
+
+python -m scripts.check_environment
+python -m pytest
+ruff check .
+
+---
+
+# Paso 18: ejecutar la validación completa
+
+Ejecuta estos cuatro comandos:
+
+```powershell
+python -m scripts.check_environment
+python -m pytest
+ruff check .
+ruff format --check .
+
 ## Project status
 
 The project is currently under development.
 
 ### Current phase
 
-* [x] Repository structure
-* [ ] Project scope
-* [ ] Architecture design
-* [ ] GitHub API ingestion
-* [ ] BigQuery raw layer
-* [ ] dbt transformations
-* [ ] Dimensional model
-* [ ] Airflow orchestration
-* [ ] Data quality tests
-* [ ] Analytics dashboard
+### Current phase
+
+- [x] Repository structure
+- [x] Project scope
+- [x] Architecture design
+- [x] Python development environment
+- [ ] GitHub API ingestion
+- [ ] BigQuery raw layer
+- [ ] dbt transformations
+- [ ] Dimensional model
+- [ ] Airflow orchestration
+- [ ] Data quality tests
+- [ ] Analytics dashboard
 
 ## Initial repositories
 
