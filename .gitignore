@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.ruff_cache/
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Variables de entorno y credenciales
+.env
+*.key
+*.pem
+credentials.json
+service-account.json
+
+# Datos locales
+data/raw/*
+!data/raw/.gitkeep
+
+# Airflow
+airflow.db
+airflow.cfg
+logs/
+standalone_admin_password.txt
+
+# dbt
+dbt_devflow/target/
+dbt_devflow/logs/
+dbt_devflow/dbt_packages/
+dbt_devflow/profiles.yml
+
+# IDE
+.vscode/
+.idea/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+*.log
+*.tmp
