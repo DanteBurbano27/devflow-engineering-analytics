@@ -96,7 +96,6 @@ devflow-engineering-analytics/
 
 This project is being developed as a practical Data Engineering portfolio project focused on:
 
-- [Project scope](docs/project_scope.md)
 * API extraction.
 * Batch pipelines.
 * Incremental data loads.
@@ -105,3 +104,8 @@ This project is being developed as a practical Data Engineering portfolio projec
 * Dimensional modeling.
 * Pipeline orchestration.
 * Technical documentation.
+
+## Project documentation
+
+- [Project scope](docs/project_scope.md)
+- [System architecture](docs/architecture/system_architecture.md)
