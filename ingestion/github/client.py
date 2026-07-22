@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, TypeAlias
+from typing import Any
 
 import requests
 from requests import Response, Session
@@ -22,7 +22,7 @@ from ingestion.github.exceptions import (
     GitHubRateLimitError,
 )
 
-JSONData: TypeAlias = dict[str, Any] | list[Any]
+type JSONData = dict[str, Any] | list[Any]
 
 
 class GitHubClient:
