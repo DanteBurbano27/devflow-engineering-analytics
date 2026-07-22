@@ -63,25 +63,72 @@ class GitHubClient:
         endpoint: str,
         params: dict[str, Any] | None = None,
     ) -> JSONData:
-        """Send a GET request and return the decoded JSON response."""
+        """Send one GET request and return its decoded JSON response."""
         url = self._build_url(endpoint)
         response = self._send_get(url=url, params=params)
 
         self._raise_for_status(response)
 
-        try:
-            payload = response.json()
-        except JSONDecodeError as exc:
-            raise GitHubAPIError(
-                f"GitHub returned an invalid JSON response for {url}."
-            ) from exc
+        return self._decode_json(response=response, request_url=url)
 
-        if not isinstance(payload, (dict, list)):
-            raise GitHubAPIError(
-                f"GitHub returned an unsupported JSON structure for {url}."
+    def get_all_pages(
+        self,
+        endpoint: str,
+        params: dict[str, Any] | None = None,
+        max_pages: int | None = None,
+    ) -> list[Any]:
+        """Retrieve and combine every page from a collection endpoint.
+
+        The optional max_pages argument limits the number of pages. It is
+        useful during local development to avoid downloading large datasets.
+        """
+        if max_pages is not None and max_pages <= 0:
+            raise ValueError("max_pages must be greater than zero.")
+
+        url = self._build_url(endpoint)
+
+        request_params = dict(params or {})
+        request_params.setdefault("per_page", 100)
+
+        all_items: list[Any] = []
+        page_count = 0
+
+        while url:
+            response = self._send_get(
+                url=url,
+                params=request_params,
             )
 
-        return payload
+            self._raise_for_status(response)
+
+            payload = self._decode_json(
+                response=response,
+                request_url=url,
+            )
+
+            if not isinstance(payload, list):
+                raise GitHubAPIError(
+                    "A paginated GitHub endpoint must return a JSON list."
+                )
+
+            all_items.extend(payload)
+            page_count += 1
+
+            if max_pages is not None and page_count >= max_pages:
+                break
+
+            next_url = response.links.get("next", {}).get("url")
+
+            if isinstance(next_url, str):
+                url = next_url
+            else:
+                url = ""
+
+            # The next URL supplied by GitHub already contains its query
+            # parameters, so the original parameters must not be sent again.
+            request_params = None
+
+        return all_items
 
     def _send_get(
         self,
@@ -101,6 +148,26 @@ class GitHubClient:
             ) from exc
         except RequestsConnectionError as exc:
             raise GitHubAPIError("The connection to the GitHub API failed.") from exc
+
+    def _decode_json(
+        self,
+        response: Response,
+        request_url: str,
+    ) -> JSONData:
+        """Decode and validate a GitHub JSON response."""
+        try:
+            payload = response.json()
+        except JSONDecodeError as exc:
+            raise GitHubAPIError(
+                f"GitHub returned invalid JSON for {request_url}."
+            ) from exc
+
+        if not isinstance(payload, (dict, list)):
+            raise GitHubAPIError(
+                f"GitHub returned an unsupported JSON structure for {request_url}."
+            )
+
+        return payload
 
     def _raise_for_status(self, response: Response) -> None:
         """Convert relevant HTTP status codes into domain exceptions."""
