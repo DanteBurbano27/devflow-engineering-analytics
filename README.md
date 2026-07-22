@@ -74,6 +74,7 @@ python -m pytest
 ruff check .
 ruff format --check .
 
+
 ## Project status
 
 The project is currently under development.
