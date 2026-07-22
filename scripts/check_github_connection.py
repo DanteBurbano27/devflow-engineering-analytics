@@ -3,6 +3,7 @@
 from typing import Any
 
 from ingestion.common.config import ConfigurationError, Settings
+from ingestion.common.logging import configure_logging
 from ingestion.github.client import GitHubClient
 from ingestion.github.exceptions import GitHubAPIError
 
@@ -22,12 +23,15 @@ def main() -> int:
     """Validate authentication and access to a public repository."""
     try:
         settings = Settings.from_env()
+        configure_logging(settings.log_level)
 
         client = GitHubClient(
             token=settings.github_token,
             base_url=settings.github_api_base_url,
             api_version=settings.github_api_version,
             timeout_seconds=settings.github_timeout_seconds,
+            max_retries=settings.github_max_retries,
+            backoff_seconds=settings.github_backoff_seconds,
         )
 
         rate_payload = require_mapping(
