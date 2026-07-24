@@ -72,6 +72,24 @@ def test_extract_repository_returns_normalized_metadata() -> None:
     assert metadata.extracted_at == extracted_at
 
 
+def test_extract_repository_with_payload_returns_structured_result() -> None:
+    """The extended service must expose raw and normalized data from one request."""
+    payload = build_repository_payload()
+    client = Mock(spec=GitHubClient)
+    client.get.return_value = payload
+    service = GitHubRepositoryService(client)
+
+    result = service.extract_repository_with_payload(
+        owner="apache",
+        repository="airflow",
+    )
+
+    client.get.assert_called_once_with("/repos/apache/airflow")
+    assert result.endpoint == "/repos/apache/airflow"
+    assert result.payload is payload
+    assert result.metadata.full_name == "apache/airflow"
+
+
 def test_extract_repository_rejects_non_object_response() -> None:
     """The repository endpoint must return a JSON object."""
     client = Mock(spec=GitHubClient)

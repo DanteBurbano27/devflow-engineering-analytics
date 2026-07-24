@@ -1,0 +1,12 @@
+{
+  "repositories": [
+    {
+      "owner": "apache",
+      "name": "airflow"
+    },
+    {
+      "owner": "pandas-dev",
+      "name": "pandas"
+    }
+  ]
+}

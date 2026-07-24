@@ -20,6 +20,8 @@ service-account.json
 # Datos locales
 data/raw/*
 !data/raw/.gitkeep
+data/normalized/
+data/manifests/
 
 # Airflow
 airflow.db

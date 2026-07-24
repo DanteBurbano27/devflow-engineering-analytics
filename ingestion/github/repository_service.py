@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from ingestion.github.client import GitHubClient
 from ingestion.github.repository_metadata import (
@@ -16,6 +18,15 @@ logger = logging.getLogger(__name__)
 
 class RepositoryExtractionError(RuntimeError):
     """Raised when repository metadata cannot be extracted or normalized."""
+
+
+@dataclass(frozen=True, slots=True)
+class RepositoryExtractionResult:
+    """Raw and normalized results produced by one GitHub request."""
+
+    endpoint: str
+    payload: dict[str, Any]
+    metadata: RepositoryMetadata
 
 
 class GitHubRepositoryService:
@@ -33,6 +44,20 @@ class GitHubRepositoryService:
         extracted_at: datetime | None = None,
     ) -> RepositoryMetadata:
         """Extract and normalize metadata for one GitHub repository."""
+        return self.extract_repository_with_payload(
+            owner,
+            repository,
+            extracted_at=extracted_at,
+        ).metadata
+
+    def extract_repository_with_payload(
+        self,
+        owner: str,
+        repository: str,
+        *,
+        extracted_at: datetime | None = None,
+    ) -> RepositoryExtractionResult:
+        """Extract raw and normalized metadata with a single GitHub request."""
         normalized_owner = _normalize_path_component(
             owner,
             field_name="owner",
@@ -84,7 +109,11 @@ class GitHubRepositoryService:
             },
         )
 
-        return metadata
+        return RepositoryExtractionResult(
+            endpoint=endpoint,
+            payload=payload,
+            metadata=metadata,
+        )
 
 
 def _normalize_path_component(
