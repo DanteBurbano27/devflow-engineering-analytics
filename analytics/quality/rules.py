@@ -543,9 +543,130 @@ class HtmlUrlValidityRule(QualityRule):
         return []
 
 
-# =====================================================================
-# BATCH-LEVEL RULES (Cross-record)
-# =====================================================================
+class NonEmptyRepositoryNameRule(QualityRule):
+    """Ensure repository_name is present, non-empty, and matches full_name."""
+
+    rule_id = "DQ-NAME-003"
+    rule_name = "Non-Empty Repository Name"
+    severity = QualitySeverity.ERROR
+
+    def evaluate(self, record: Any) -> list[QualityIssue]:
+        data = _extract_dict(record)
+        name = data.get("repository_name")
+        full_name = data.get("full_name")
+        ident = _get_identifier(data)
+
+        if not isinstance(name, str) or not name.strip():
+            return [
+                QualityIssue(
+                    rule_id=self.rule_id,
+                    rule_name=self.rule_name,
+                    severity=self.severity,
+                    field="repository_name",
+                    message="Field 'repository_name' is missing or empty.",
+                    record_identifier=ident,
+                    actual_value=name,
+                )
+            ]
+
+        if isinstance(full_name, str) and "/" in full_name:
+            expected_suffix = f"/{name.strip()}"
+            if not full_name.strip().endswith(expected_suffix):
+                return [
+                    QualityIssue(
+                        rule_id=self.rule_id,
+                        rule_name=self.rule_name,
+                        severity=self.severity,
+                        field="repository_name",
+                        message=(
+                            f"Identity mismatch: full_name '{full_name}' "
+                            f"does not end with repository_name '{name}'."
+                        ),
+                        record_identifier=ident,
+                        actual_value=f"name={name}, full_name={full_name}",
+                    )
+                ]
+
+        return []
+
+
+class NonEmptyDefaultBranchRule(QualityRule):
+    """Ensure default_branch is a non-empty valid string."""
+
+    rule_id = "DQ-BRANCH-001"
+    rule_name = "Non-Empty Default Branch"
+    severity = QualitySeverity.ERROR
+
+    def evaluate(self, record: Any) -> list[QualityIssue]:
+        data = _extract_dict(record)
+        branch = data.get("default_branch")
+        ident = _get_identifier(data)
+
+        if not isinstance(branch, str) or not branch.strip():
+            return [
+                QualityIssue(
+                    rule_id=self.rule_id,
+                    rule_name=self.rule_name,
+                    severity=self.severity,
+                    field="default_branch",
+                    message="Field 'default_branch' is missing or empty.",
+                    record_identifier=ident,
+                    actual_value=branch,
+                )
+            ]
+        return []
+
+
+class RequiredFieldsNullabilityRule(QualityRule):
+    """Ensure non-nullable required contract fields are present and not None."""
+
+    rule_id = "DQ-NULL-001"
+    rule_name = "Non-Nullable Fields Nullability Check"
+    severity = QualitySeverity.ERROR
+
+    REQUIRED_FIELDS: tuple[str, ...] = (
+        "repository_id",
+        "repository_name",
+        "full_name",
+        "owner_login",
+        "visibility",
+        "default_branch",
+        "is_fork",
+        "is_archived",
+        "is_disabled",
+        "created_at",
+        "updated_at",
+        "stars_count",
+        "forks_count",
+        "open_issues_count",
+        "subscribers_count",
+        "size_kb",
+        "html_url",
+        "extracted_at",
+    )
+
+    def evaluate(self, record: Any) -> list[QualityIssue]:
+        data = _extract_dict(record)
+        ident = _get_identifier(data)
+        issues: list[QualityIssue] = []
+
+        for field in self.REQUIRED_FIELDS:
+            if field not in data or data[field] is None:
+                issues.append(
+                    QualityIssue(
+                        rule_id=self.rule_id,
+                        rule_name=self.rule_name,
+                        severity=self.severity,
+                        field=field,
+                        message=(
+                            f"Required non-nullable field '{field}' is missing or null."
+                        ),
+                        record_identifier=ident,
+                        actual_value=None,
+                    )
+                )
+
+        return issues
 
 
 class UniqueRepositoryIdRule(BatchQualityRule):

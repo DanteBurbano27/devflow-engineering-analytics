@@ -51,6 +51,15 @@ def sample_valid_record(**overrides: Any) -> dict[str, Any]:
         "html_url": "https://github.com/acme/data-engine",
         "extracted_at": now.isoformat(),
     }
+    if (
+        "full_name" in overrides
+        and "repository_name" not in overrides
+        and "/" in str(overrides["full_name"])
+    ):
+        parts = str(overrides["full_name"]).split("/")
+        if len(parts) == 2:
+            base["repository_name"] = parts[1]
+
     base.update(overrides)
     return base
 
@@ -274,3 +283,67 @@ def test_quality_result_methods() -> None:
     assert "summary" in serialized
     assert "issues" in serialized
     assert serialized["summary"]["error_count"] == 1
+
+
+def test_rule_repository_name() -> None:
+    """NonEmptyRepositoryNameRule validates non-emptiness and full_name alignment."""
+    from analytics.quality.rules import NonEmptyRepositoryNameRule
+
+    rule = NonEmptyRepositoryNameRule()
+
+    # Clean
+    assert len(rule.evaluate(sample_valid_record())) == 0
+
+    # Empty name
+    empty = sample_valid_record(repository_name="   ")
+    issues_empty = rule.evaluate(empty)
+    assert len(issues_empty) == 1
+    assert issues_empty[0].severity == QualitySeverity.ERROR
+    assert "missing or empty" in issues_empty[0].message
+
+    # Name mismatch with full_name
+    mismatch = sample_valid_record(
+        repository_name="wrong-name", full_name="acme/data-engine"
+    )
+    issues_mismatch = rule.evaluate(mismatch)
+    assert len(issues_mismatch) == 1
+    assert "Identity mismatch" in issues_mismatch[0].message
+
+
+def test_rule_default_branch() -> None:
+    """NonEmptyDefaultBranchRule validates that default branch is non-empty."""
+    from analytics.quality.rules import NonEmptyDefaultBranchRule
+
+    rule = NonEmptyDefaultBranchRule()
+
+    assert len(rule.evaluate(sample_valid_record(default_branch="main"))) == 0
+    assert len(rule.evaluate(sample_valid_record(default_branch="master"))) == 0
+
+    empty = sample_valid_record(default_branch="  ")
+    issues = rule.evaluate(empty)
+    assert len(issues) == 1
+    assert issues[0].severity == QualitySeverity.ERROR
+    assert issues[0].field == "default_branch"
+
+
+def test_rule_nullability_check() -> None:
+    """RequiredFieldsNullabilityRule detects missing non-nullable fields."""
+    from analytics.quality.rules import RequiredFieldsNullabilityRule
+
+    rule = RequiredFieldsNullabilityRule()
+
+    clean = sample_valid_record()
+    assert len(rule.evaluate(clean)) == 0
+
+    # Test with multiple null fields
+    corrupt = sample_valid_record()
+    corrupt["repository_id"] = None
+    corrupt["owner_login"] = None
+    corrupt["stars_count"] = None
+
+    issues = rule.evaluate(corrupt)
+    assert len(issues) == 3
+    fields_flagged = {i.field for i in issues}
+    assert fields_flagged == {"repository_id", "owner_login", "stars_count"}
+    for issue in issues:
+        assert issue.severity == QualitySeverity.ERROR
