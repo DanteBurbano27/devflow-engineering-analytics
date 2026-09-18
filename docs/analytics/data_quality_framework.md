@@ -38,11 +38,14 @@ The DevFlow Intelligence Data Quality Framework provides programmatic, non-destr
 
 | Rule ID | Rule Name | Severity | Field | Validation Condition |
 |---|---|---|---|---|
+| `DQ-NULL-001` | Required Fields Nullability | `ERROR` | multiple | Asserts non-nullness of mandatory repository attributes. |
 | `DQ-ID-001` | Valid Positive Repository ID | `ERROR` | `repository_id` | Must be an integer strictly greater than 0. |
+| `DQ-NAME-003` | Non-Empty Repository Name | `ERROR` | `repository_name` | Must be a non-empty string. |
 | `DQ-NAME-001` | Non-Empty Full Name | `ERROR` | `full_name` | Must be a non-empty string. |
 | `DQ-NAME-002` | Full Name Format Pattern | `ERROR` | `full_name` | Must match canonical `owner/repo` pattern. |
 | `DQ-OWNER-001` | Non-Empty Owner Login | `ERROR` | `owner_login` | Must be a non-empty string. |
 | `DQ-CONS-001` | Owner and Full Name Consistency | `ERROR` | `full_name` | `full_name` must start with `owner_login + '/'`. |
+| `DQ-BRANCH-001` | Non-Empty Default Branch | `ERROR` | `default_branch` | Must be a non-empty string. |
 | `DQ-METRIC-001` | Non-Negative Numeric Metrics | `ERROR` | `*_count`, `size_kb` | Stars, forks, issues, subscribers, and size cannot be negative. |
 | `DQ-VIS-001` | Expected Visibility Domain | `ERROR` | `visibility` | Must be one of `public`, `private`, or `internal`. |
 | `DQ-TIME-001` | Extracted At Timestamp Presence | `ERROR` | `extracted_at` | Lineage timestamp must be present and valid UTC ISO 8601. |

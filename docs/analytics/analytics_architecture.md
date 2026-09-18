@@ -93,8 +93,15 @@ The analytical contract enforces explicit typing, non-emptiness, and timezone se
 ### 4.1 Temporal Recency & Maintenance Status
 * **`days_since_last_push`**:
   $$\text{days\_since\_last\_push} = \max(0, (\text{extracted\_at} - \text{pushed\_at}).\text{days})$$
-* **`days_since_creation`**:
-  $$\text{days\_since\_creation} = \max(0, (\text{extracted\_at} - \text{created\_at}).\text{days})$$
+* **`days_since_creation`** / **`repository_age_days`**:
+  $$\text{repository\_age\_days} = \max(0, (\text{extracted\_at} - \text{created\_at}).\text{days})$$
+* **`recency_bucket`** Classification:
+  * **`NEVER_PUSHED`**: If `pushed_at is None`
+  * **`LAST_7_DAYS`**: If $\text{days\_since\_last\_push} \le 7$
+  * **`LAST_30_DAYS`**: If $8 \le \text{days\_since\_last\_push} \le 30$
+  * **`LAST_90_DAYS`**: If $31 \le \text{days\_since\_last\_push} \le 90$
+  * **`LAST_180_DAYS`**: If $91 \le \text{days\_since\_last\_push} \le 180$
+  * **`OVER_180_DAYS`**: If $\text{days\_since\_last\_push} > 180$
 * **`activity_status`** Classification:
   * **`DISABLED`**: If `is_disabled == True`
   * **`ARCHIVED`**: If `is_archived == True`
@@ -109,6 +116,10 @@ The analytical contract enforces explicit typing, non-emptiness, and timezone se
   $$\text{issue\_to\_star\_ratio} = \frac{\text{open\_issues\_count}}{\text{stars\_count}} \quad (\text{if } \text{stars\_count} > 0, \text{ else } 0.0)$$
 * **`star_to_fork_ratio`**:
   $$\text{star\_to\_fork\_ratio} = \frac{\text{stars\_count}}{\text{forks\_count}} \quad (\text{if } \text{forks\_count} > 0, \text{ else } 0.0)$$
+* **`issue_to_fork_ratio`**:
+  $$\text{issue\_to\_fork\_ratio} = \frac{\text{open\_issues\_count}}{\text{forks\_count}} \quad (\text{if } \text{forks\_count} > 0, \text{ else } 0.0)$$
+* **`issue_density_per_mb`**:
+  $$\text{issue\_density\_per\_mb} = \frac{\text{open\_issues\_count}}{\text{size\_kb} / 1024.0} \quad (\text{if } \text{size\_kb} > 0, \text{ else } 0.0)$$
 * **`community_interest_score`**: Composite weighted popularity index:
   $$\text{score} = (\text{stars} \times 1.0) + (\text{forks} \times 2.0) + (\text{subscribers} \times 1.5)$$
 * **`size_category`**:
@@ -126,6 +137,8 @@ The `PortfolioAnalyticsAggregator` combines individual `RepositoryMetrics` to pr
 
 * **Aggregated Fleet Counters**: Total/average/median stars, forks, issues, watchers, and disk volume.
 * **Health Breakdown**: Counts and percentages of active, stale, inactive, archived, and disabled repositories.
+* **Governance & Origin Breakdown**: Counts and percentages of forks vs source repositories, public/private/internal visibility distribution, and archived repositories.
+* **Recency Distribution**: Frequency distribution of repositories categorized across `RecencyBucket` windows.
 * **Language Distribution**: Repository counts, fleet percentages, cumulative stars, and active repository counts grouped by primary programming language.
 * **Owner Distribution**: Multi-repository ownership breakdown, total reach (stars/forks), and language diversity per organization or user.
 * **Leaderboards**: Top starred repositories across the fleet.

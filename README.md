@@ -73,11 +73,11 @@ flowchart TD
 ## Key Highlights & Portfolio Value
 
 1. **Strict Data Contract Architecture**: Enforces explicit schema types, nullability boundaries, and timezone awareness (`UTC`) via `RepositoryContract`, insulating downstream models from upstream API drift.
-2. **Programmatic Data Quality Gate**: Non-destructive `DataQualityEngine` evaluating 13+ record- and batch-level rules with clear severity tiers (`ERROR` vs `WARNING`), preventing corrupt records from polluting analytical marts.
-3. **Deterministic Derived Metrics**: Recency calculations (`days_since_last_push`) and activity status mappings (`ACTIVE`, `STALE`, `INACTIVE`, `ARCHIVED`, `DISABLED`) execute deterministically relative to ingestion watermarks.
+2. **Programmatic Data Quality Gate**: Non-destructive `DataQualityEngine` evaluating 16 record- and batch-level rules with clear severity tiers (`ERROR` vs `WARNING`), preventing corrupt records from polluting analytical marts.
+3. **Deterministic Derived Metrics**: Recency calculations (`days_since_last_push`, `recency_bucket`), age (`repository_age_days`), and activity status mappings (`ACTIVE`, `STALE`, `INACTIVE`, `ARCHIVED`, `DISABLED`) execute deterministically relative to ingestion watermarks.
 4. **Cloud Warehouse Readiness (Google BigQuery)**: Pre-built, optimized SQL models implementing staging deduplication with window functions, 64-bit `FARM_FINGERPRINT` surrogate keys, date partitioning (`PARTITION BY DATE(snapshot_timestamp)`), and clustering (`CLUSTER BY repository_id, language`).
-5. **Dual-Team Autonomous Collaboration**: Designed under a strict isolation model where the Antigravity Team develops the analytics, contract, and quality foundation while Codex integrates the data platform.
-6. **Zero-Dependency Core**: Analytics and data quality engines rely exclusively on Python standard library dataclasses, enums, and typing, guaranteeing lightning-fast offline test execution (< 1s for 95 tests).
+5. **Dual-Team Autonomous Collaboration**: Designed under a strict isolation model where the Antigravity Team develops the analytics, contract, and quality foundation while Codex integrates the data platform layer.
+6. **Zero-Dependency Core**: Analytics and data quality engines rely exclusively on Python standard library dataclasses, enums, and typing, guaranteeing lightning-fast offline test execution (< 1s for 109 tests).
 
 ---
 
@@ -85,16 +85,20 @@ flowchart TD
 
 Engineering managers overseeing multiple repositories require centralized visibility into maintenance activity, pull request flows, and repository freshness. DevFlow Intelligence provides mathematically sound and defensible answers to core questions:
 
-### 1. Activity Status Classification
+### 1. Activity Status & Recency Classification
 * **`ACTIVE`**: Repository pushed within the last 90 days, not archived, not disabled.
 * **`STALE`**: Repository pushed between 91 and 180 days ago.
 * **`INACTIVE`**: Repository without pushes in > 180 days or without any recorded pushes.
 * **`ARCHIVED`**: Explicitly marked archived by owner.
 * **`DISABLED`**: Explicitly disabled repository.
+* **`recency_bucket`**: Categorized time window of last push (`LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`, `LAST_180_DAYS`, `OVER_180_DAYS`, `NEVER_PUSHED`).
 
 ### 2. Engagement & Technical Ratios
 * **`fork_to_star_ratio`**: Measures community contribution tendency vs passive starring.
-* **`issue_to_star_ratio`**: Identifies repositories with disproportionate issue backlogs relative to user base.
+* **`issue_to_star_ratio`**: Identifies repositories with disproportionate issue backlogs relative to star base.
+* **`issue_to_fork_ratio`**: Relates issue volume to active fork maintenance.
+* **`issue_density_per_mb`**: Evaluates backlog density normalized by repository codebase size (MB).
+* **`repository_age_days`**: Elapsed lifetime of repository from creation to extraction.
 * **`community_interest_score`**: Weighted composite metric:
   $$\text{Score} = (\text{stars} \times 1.0) + (\text{forks} \times 2.0) + (\text{subscribers} \times 1.5)$$
 * **`size_category`**: Standardized size tiering (`EMPTY`, `MICRO`, `SMALL`, `MEDIUM`, `LARGE`).
@@ -145,7 +149,7 @@ devflow-engineering-analytics/
 │   ├── quality/                    # Programmatic Data Quality Framework
 │   │   ├── engine.py               # DataQualityEngine
 │   │   ├── models.py               # QualityResult, QualityIssue, QualitySeverity
-│   │   └── rules.py                # 13+ validation rules (Record & Batch)
+│   │   └── rules.py                # 16 validation rules (Record & Batch)
 │   ├── sql/                        # BigQuery-ready SQL warehouse models
 │   │   ├── staging/                # stg_github_repositories.sql
 │   │   ├── intermediate/           # int_repository_activity.sql
@@ -155,6 +159,7 @@ devflow-engineering-analytics/
 ├── docs/                           # Technical architecture & project documentation
 │   ├── analytics/                  # Deep-dive analytics, DQ, and warehouse guides
 │   ├── architecture/               # System architecture & ADRs
+│   ├── integration_acceptance_checklist.md # Integration contract & boundaries
 │   └── project_scope.md            # Business problem & project scope
 ├── ingestion/                      # GitHub API extraction client & metadata
 │   ├── common/                     # Environment, config, logging
@@ -164,7 +169,7 @@ devflow-engineering-analytics/
 │   ├── check_data_quality.py       # Data quality validation diagnostic runner
 │   ├── check_environment.py        # Python runtime & dependencies verification
 │   └── check_github_connection.py  # GitHub API connectivity test
-├── tests/                          # Automated pytest suite (95+ tests)
+├── tests/                          # Automated pytest suite (109 tests)
 │   ├── test_analytics_*.py         # Analytics service & summary unit tests
 │   ├── test_contract_*.py          # Data contract validation tests
 │   ├── test_data_quality_*.py      # Data quality rule & engine tests
@@ -209,7 +214,7 @@ python scripts/check_data_quality.py
 ### 4. Run Automated Test Suite
 All tests execute without network calls, GitHub tokens, or cloud credentials:
 ```powershell
-# Run pytest suite (95 tests passing)
+# Run pytest suite (109 tests passing)
 python -m pytest
 
 # Run Ruff linter and code formatter check
@@ -229,12 +234,14 @@ python -m ruff format --check .
 
 ## Roadmap & Next Steps
 
-- [x] Ingestion layer: GitHub REST API client & metadata normalization (`DFI-006.1`)
-- [x] Analytics layer: Data contract enforcement & schema reflection
-- [x] Analytics layer: Derived recency, engagement ratios, and fleet aggregations
-- [x] Data quality layer: Programmatic rule engine with ERROR/WARNING classification
+- [x] Ingestion baseline: GitHub REST API client & metadata normalization (`DFI-006.1`)
+- [x] Analytics layer: Data contract enforcement & schema reflection (`RepositoryContract`)
+- [x] Analytics layer: Derived recency, engagement ratios, and fleet aggregations (`PortfolioSummary`)
+- [x] Data quality layer: Programmatic rule engine with ERROR/WARNING classification (16 rules)
 - [x] SQL Modeling: BigQuery-ready staging, intermediate, and dimensional marts
-- [x] Comprehensive test suite: 95 automated unit and contract tests
-- [ ] Codex Integration: Cloud BigQuery storage adapter & raw bucket persistence
-- [ ] Airflow DAG orchestration: Automated daily incremental extraction
-- [ ] BI Dashboard: Looker Studio analytical dashboards querying BigQuery marts
+- [x] Comprehensive test suite: 109 automated unit and contract tests (100% passing, offline)
+- [x] Integration preparation: Acceptance checklist defined (`docs/integration_acceptance_checklist.md`)
+- [ ] Codex Integration: Cloud BigQuery storage adapter & raw bucket persistence (provided by the data-platform layer)
+- [ ] Airflow DAG orchestration: Automated daily incremental extraction (planned / in integration)
+- [ ] CI Pipeline: GitHub Actions continuous integration (provided by the data-platform layer)
+- [ ] BI Dashboard: Looker Studio analytical dashboards querying BigQuery marts (planned)
