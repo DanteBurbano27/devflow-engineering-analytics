@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+
+      - name: Install locked dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-lock.txt
+
+      - name: Compile Python sources
+        run: python -m compileall ingestion orchestration scripts
+
+      - name: Ruff lint
+        run: python -m ruff check .
+
+      - name: Ruff format check
+        run: python -m ruff format --check .
+
+      - name: Test
+        run: python -m pytest

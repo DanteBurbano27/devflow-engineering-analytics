@@ -1,0 +1,24 @@
+# DevFlow Intelligence
+
+- Este es un proyecto Python de Data Engineering llamado DevFlow Intelligence.
+- El sistema operativo es Windows; usa exclusivamente comandos PowerShell.
+- Trabaja solamente en el ticket DFI solicitado.
+- No leas, modifiques, muestres ni versiones `.env`.
+- No expongas tokens, credenciales ni encabezados `Authorization`.
+- No modifiques archivos ajenos al alcance solicitado.
+- Nunca usar el Python global del sistema.
+- Nunca instalar paquetes globalmente.
+- No ejecutar `pip install` sin autorización explícita.
+- No instales dependencias sin autorización.
+- No hagas commit, push, merge ni elimines ramas sin autorización explícita.
+- Durante el desarrollo, ejecuta primero pruebas específicas y una sola vez la suite completa al final.
+- Antes de ejecutar pruebas, comprobar:
+  - `.\.venv\Scripts\python.exe --version`
+- No escanear `.venv`, `.git`, `__pycache__` ni archivos generados.
+- Antes de terminar, ejecuta:
+  - `.\.venv\Scripts\python.exe -m py_compile RUTA_DEL_ARCHIVO`
+  - `.\.venv\Scripts\python.exe -m ruff format .`
+  - `.\.venv\Scripts\python.exe -m ruff check .`
+  - `.\.venv\Scripts\python.exe -m ruff format --check .`
+  - `.\.venv\Scripts\python.exe -m pytest`
+- Da respuestas finales breves que incluyan archivos cambiados, implementación, pruebas y riesgos.
