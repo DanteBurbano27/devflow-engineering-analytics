@@ -11,7 +11,8 @@ venv/
 env/
 
 # Variables de entorno y credenciales
-.env
+.env*
+!.env.example
 *.key
 *.pem
 credentials.json
@@ -20,6 +21,9 @@ service-account.json
 # Datos locales
 data/raw/*
 !data/raw/.gitkeep
+data/normalized/
+data/manifests/
+data/analytics/
 
 # Airflow
 airflow.db

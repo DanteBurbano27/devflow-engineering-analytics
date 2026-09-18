@@ -1,0 +1,108 @@
+from datetime import UTC, datetime
+
+
+def generate_golden_dataset() -> list[dict]:
+    """Generates a comprehensive dataset for Phase 2C covering all edge cases."""
+    now = datetime(2026, 9, 18, 12, 0, 0, tzinfo=UTC).isoformat()
+    past = datetime(2020, 1, 1, 0, 0, 0, tzinfo=UTC).isoformat()
+    return [
+        {
+            # 1. Perfect valid repository
+            "repository_id": 1001,
+            "repository_name": "perfect-repo",
+            "full_name": "owner/perfect-repo",
+            "owner_login": "owner",
+            "description": "A perfect repository",
+            "visibility": "public",
+            "default_branch": "main",
+            "language": "Python",
+            "is_fork": False,
+            "is_archived": False,
+            "is_disabled": False,
+            "created_at": past,
+            "updated_at": now,
+            "pushed_at": now,
+            "stars_count": 1500,
+            "forks_count": 200,
+            "open_issues_count": 15,
+            "subscribers_count": 100,
+            "size_kb": 50000,
+            "html_url": "https://github.com/owner/perfect-repo",
+            "extracted_at": now,
+        },
+        {
+            # 2. Forked repository with nulls
+            "repository_id": 1002,
+            "repository_name": "forked-repo",
+            "full_name": "owner2/forked-repo",
+            "owner_login": "owner2",
+            "description": None,
+            "visibility": "public",
+            "default_branch": "master",
+            "language": None,
+            "is_fork": True,
+            "is_archived": False,
+            "is_disabled": False,
+            "created_at": past,
+            "updated_at": now,
+            "pushed_at": None,
+            "stars_count": 0,
+            "forks_count": 0,
+            "open_issues_count": 0,
+            "subscribers_count": 1,
+            "size_kb": 1024,
+            "html_url": "https://github.com/owner2/forked-repo",
+            "extracted_at": now,
+        },
+        {
+            # 3. Archived private repository with extreme metrics
+            "repository_id": 1003,
+            "repository_name": "archived-secret",
+            "full_name": "org/archived-secret",
+            "owner_login": "org",
+            "description": "Old stuff",
+            "visibility": "private",
+            "default_branch": "main",
+            "language": "Go",
+            "is_fork": False,
+            "is_archived": True,
+            "is_disabled": False,
+            "created_at": past,
+            "updated_at": past,
+            "pushed_at": past,
+            "stars_count": 100000,
+            "forks_count": 50000,
+            "open_issues_count": 9000,
+            "subscribers_count": 10000,
+            "size_kb": 1048576,
+            "html_url": "https://github.com/org/archived-secret",
+            "extracted_at": now,
+        },
+        {
+            # 4. Invalid record (for testing quality rejections) - negative stars
+            "repository_id": 1004,
+            "repository_name": "bad-metrics",
+            "full_name": "org/bad-metrics",
+            "owner_login": "org",
+            "description": "Negative stars not allowed",
+            "visibility": "public",
+            "default_branch": "main",
+            "language": "Rust",
+            "is_fork": False,
+            "is_archived": False,
+            "is_disabled": False,
+            "created_at": now,
+            "updated_at": now,
+            "pushed_at": now,
+            "stars_count": -5,
+            "forks_count": 0,
+            "open_issues_count": 0,
+            "subscribers_count": 0,
+            "size_kb": 10,
+            "html_url": "https://github.com/org/bad-metrics",
+            "extracted_at": now,
+        },
+    ]
+
+
+GOLDEN_REPOSITORIES = generate_golden_dataset()
