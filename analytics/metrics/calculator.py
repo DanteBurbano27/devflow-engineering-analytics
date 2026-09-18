@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from analytics.contracts.repository import RepositoryRecord
 from analytics.metrics.definitions import (
     ActivityStatus,
+    RecencyBucket,
     RepositoryMetrics,
     SizeCategory,
 )
@@ -42,6 +43,7 @@ class RepositoryMetricCalculator:
 
         # 1. Temporal spans
         days_since_creation = max(0, (ref_time - record.created_at).days)
+        repository_age_days = days_since_creation
 
         if record.pushed_at is not None:
             days_since_last_push: int | None = max(
@@ -54,12 +56,13 @@ class RepositoryMetricCalculator:
             days_since_last_push = None
             days_between_creation_and_last_push = None
 
-        # 2. Activity status
+        # 2. Activity status and recency bucket
         activity_status = cls._determine_activity_status(
             is_disabled=record.is_disabled,
             is_archived=record.is_archived,
             days_since_last_push=days_since_last_push,
         )
+        recency_bucket = cls._determine_recency_bucket(days_since_last_push)
         is_active = activity_status == ActivityStatus.ACTIVE
 
         # 3. Ratios (zero-division safe)
@@ -77,6 +80,15 @@ class RepositoryMetricCalculator:
             round(record.stars_count / record.forks_count, 4)
             if record.forks_count > 0
             else 0.0
+        )
+        issue_to_fork_ratio = (
+            round(record.open_issues_count / record.forks_count, 4)
+            if record.forks_count > 0
+            else 0.0
+        )
+        size_mb = record.size_kb / 1024.0
+        issue_density_per_mb = (
+            round(record.open_issues_count / size_mb, 4) if size_mb > 0 else 0.0
         )
 
         # 4. Popularity / interest score
@@ -109,12 +121,16 @@ class RepositoryMetricCalculator:
             size_kb=record.size_kb,
             days_since_last_push=days_since_last_push,
             days_since_creation=days_since_creation,
+            repository_age_days=repository_age_days,
             days_between_creation_and_last_push=days_between_creation_and_last_push,
             activity_status=activity_status,
+            recency_bucket=recency_bucket,
             is_active=is_active,
             fork_to_star_ratio=fork_to_star_ratio,
             issue_to_star_ratio=issue_to_star_ratio,
             star_to_fork_ratio=star_to_fork_ratio,
+            issue_to_fork_ratio=issue_to_fork_ratio,
+            issue_density_per_mb=issue_density_per_mb,
             community_interest_score=community_interest_score,
             size_category=size_category,
             reference_time=ref_time,
@@ -146,6 +162,23 @@ class RepositoryMetricCalculator:
             return ActivityStatus.STALE
 
         return ActivityStatus.INACTIVE
+
+    @classmethod
+    def _determine_recency_bucket(
+        cls, days_since_last_push: int | None
+    ) -> RecencyBucket:
+        """Categorize days since last push into standardized time windows."""
+        if days_since_last_push is None:
+            return RecencyBucket.NEVER_PUSHED
+        if days_since_last_push <= 7:
+            return RecencyBucket.LAST_7_DAYS
+        if days_since_last_push <= 30:
+            return RecencyBucket.LAST_30_DAYS
+        if days_since_last_push <= 90:
+            return RecencyBucket.LAST_90_DAYS
+        if days_since_last_push <= 180:
+            return RecencyBucket.LAST_180_DAYS
+        return RecencyBucket.OVER_180_DAYS
 
     @classmethod
     def _classify_size(cls, size_kb: int) -> SizeCategory:

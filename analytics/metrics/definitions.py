@@ -18,6 +18,17 @@ class ActivityStatus(StrEnum):
     DISABLED = "DISABLED"
 
 
+class RecencyBucket(StrEnum):
+    """Standardized time window categorizing the last commit push."""
+
+    LAST_7_DAYS = "LAST_7_DAYS"
+    LAST_30_DAYS = "LAST_30_DAYS"
+    LAST_90_DAYS = "LAST_90_DAYS"
+    LAST_180_DAYS = "LAST_180_DAYS"
+    OVER_180_DAYS = "OVER_180_DAYS"
+    NEVER_PUSHED = "NEVER_PUSHED"
+
+
 class SizeCategory(StrEnum):
     """Repository size classifications based on KB."""
 
@@ -52,14 +63,18 @@ class RepositoryMetrics:
     # Temporal & Activity metrics
     days_since_last_push: int | None
     days_since_creation: int
+    repository_age_days: int
     days_between_creation_and_last_push: int | None
     activity_status: ActivityStatus
+    recency_bucket: RecencyBucket
     is_active: bool
 
     # Engagement & Technical Ratios
     fork_to_star_ratio: float
     issue_to_star_ratio: float
     star_to_fork_ratio: float
+    issue_to_fork_ratio: float
+    issue_density_per_mb: float
     community_interest_score: float
     size_category: SizeCategory
 
@@ -71,6 +86,7 @@ class RepositoryMetrics:
         """Serialize metrics to dictionary."""
         data = asdict(self)
         data["activity_status"] = self.activity_status.value
+        data["recency_bucket"] = self.recency_bucket.value
         data["size_category"] = self.size_category.value
         data["reference_time"] = self.reference_time.isoformat()
         data["calculated_at"] = self.calculated_at.isoformat()

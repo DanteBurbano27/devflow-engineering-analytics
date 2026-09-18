@@ -8,8 +8,17 @@ from __future__ import annotations
 
 from analytics.contracts.repository import RepositoryContract, RepositoryRecord
 from analytics.metrics.calculator import RepositoryMetricCalculator
-from analytics.metrics.definitions import ActivityStatus, RepositoryMetrics
-from analytics.metrics.summary import PortfolioAnalyticsAggregator, PortfolioSummary
+from analytics.metrics.definitions import (
+    ActivityStatus,
+    RecencyBucket,
+    RepositoryMetrics,
+    SizeCategory,
+)
+from analytics.metrics.summary import (
+    GovernanceDistribution,
+    PortfolioAnalyticsAggregator,
+    PortfolioSummary,
+)
 from analytics.quality.engine import DataQualityEngine
 from analytics.quality.models import (
     QualityIssue,
@@ -23,14 +32,17 @@ __all__ = [
     "ActivityStatus",
     "AnalyticsService",
     "DataQualityEngine",
+    "GovernanceDistribution",
     "PortfolioAnalyticsAggregator",
     "PortfolioSummary",
     "QualityIssue",
     "QualityReport",
     "QualityResult",
     "QualitySeverity",
+    "RecencyBucket",
     "RepositoryContract",
     "RepositoryMetricCalculator",
     "RepositoryMetrics",
     "RepositoryRecord",
+    "SizeCategory",
 ]

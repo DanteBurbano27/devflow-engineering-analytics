@@ -237,6 +237,111 @@ def test_metrics_serialization() -> None:
 
     assert metrics_dict["repository_id"] == 101
     assert metrics_dict["activity_status"] == "ACTIVE"
+    assert metrics_dict["recency_bucket"] == "LAST_7_DAYS"
     assert metrics_dict["size_category"] == "SMALL"
+    assert "repository_age_days" in metrics_dict
+    assert "issue_to_fork_ratio" in metrics_dict
+    assert "issue_density_per_mb" in metrics_dict
     assert isinstance(metrics_dict["reference_time"], str)
     assert isinstance(metrics_dict["calculated_at"], str)
+
+
+def test_recency_buckets() -> None:
+    """All recency buckets must be assigned correctly."""
+    from analytics.metrics.definitions import RecencyBucket
+
+    now = datetime(2026, 9, 18, 12, 0, 0, tzinfo=UTC)
+
+    # NEVER_PUSHED
+    r_never = make_record(created_at=now, pushed_at=None, extracted_at=now)
+    assert (
+        RepositoryMetricCalculator.calculate(r_never, reference_time=now).recency_bucket
+        == RecencyBucket.NEVER_PUSHED
+    )
+
+    # LAST_7_DAYS
+    r_7 = make_record(
+        created_at=now - timedelta(days=10),
+        pushed_at=now - timedelta(days=5),
+        extracted_at=now,
+    )
+    assert (
+        RepositoryMetricCalculator.calculate(r_7, reference_time=now).recency_bucket
+        == RecencyBucket.LAST_7_DAYS
+    )
+
+    # LAST_30_DAYS
+    r_30 = make_record(
+        created_at=now - timedelta(days=50),
+        pushed_at=now - timedelta(days=20),
+        extracted_at=now,
+    )
+    assert (
+        RepositoryMetricCalculator.calculate(r_30, reference_time=now).recency_bucket
+        == RecencyBucket.LAST_30_DAYS
+    )
+
+    # LAST_90_DAYS
+    r_90 = make_record(
+        created_at=now - timedelta(days=100),
+        pushed_at=now - timedelta(days=60),
+        extracted_at=now,
+    )
+    assert (
+        RepositoryMetricCalculator.calculate(r_90, reference_time=now).recency_bucket
+        == RecencyBucket.LAST_90_DAYS
+    )
+
+    # LAST_180_DAYS
+    r_180 = make_record(
+        created_at=now - timedelta(days=200),
+        pushed_at=now - timedelta(days=150),
+        extracted_at=now,
+    )
+    assert (
+        RepositoryMetricCalculator.calculate(r_180, reference_time=now).recency_bucket
+        == RecencyBucket.LAST_180_DAYS
+    )
+
+    # OVER_180_DAYS
+    r_over = make_record(
+        created_at=now - timedelta(days=400),
+        pushed_at=now - timedelta(days=300),
+        extracted_at=now,
+    )
+    assert (
+        RepositoryMetricCalculator.calculate(r_over, reference_time=now).recency_bucket
+        == RecencyBucket.OVER_180_DAYS
+    )
+
+
+def test_issue_ratios_and_density() -> None:
+    """issue_to_fork_ratio and issue_density_per_mb calculations."""
+    now = datetime(2026, 9, 18, 12, 0, 0, tzinfo=UTC)
+
+    # 10 issues, 20 forks, 2048 KB (2.0 MB)
+    rec = make_record(
+        created_at=now - timedelta(days=50),
+        pushed_at=now - timedelta(days=1),
+        extracted_at=now,
+        forks_count=20,
+        open_issues_count=10,
+        size_kb=2048,
+    )
+    m = RepositoryMetricCalculator.calculate(rec, reference_time=now)
+    assert m.issue_to_fork_ratio == 0.5
+    assert m.issue_density_per_mb == 5.0  # 10 issues / 2.0 MB
+    assert m.repository_age_days == 50
+
+    # Zero forks & zero size
+    rec_zero = make_record(
+        created_at=now,
+        pushed_at=now,
+        extracted_at=now,
+        forks_count=0,
+        open_issues_count=5,
+        size_kb=0,
+    )
+    m_zero = RepositoryMetricCalculator.calculate(rec_zero, reference_time=now)
+    assert m_zero.issue_to_fork_ratio == 0.0
+    assert m_zero.issue_density_per_mb == 0.0

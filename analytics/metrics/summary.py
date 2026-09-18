@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import statistics
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -37,6 +37,20 @@ class OwnerAnalytics:
 
 
 @dataclass(frozen=True, slots=True)
+class GovernanceDistribution:
+    """Breakdown of repository governance, visibility, and origin attributes."""
+
+    fork_count: int
+    source_count: int
+    fork_percentage: float
+    public_count: int
+    private_count: int
+    internal_count: int
+    archived_count: int
+    archived_percentage: float
+
+
+@dataclass(frozen=True, slots=True)
 class PortfolioSummary:
     """Executive portfolio summary aggregating multi-repository analytical health."""
 
@@ -61,6 +75,8 @@ class PortfolioSummary:
     disabled_count: int
     active_percentage: float
 
+    governance: GovernanceDistribution
+    recency_distribution: dict[str, int]
     languages: tuple[LanguageAnalytics, ...]
     owners: tuple[OwnerAnalytics, ...]
     top_starred_repositories: tuple[dict[str, Any], ...]
@@ -92,6 +108,8 @@ class PortfolioSummary:
                 "disabled_count": self.disabled_count,
                 "active_percentage": self.active_percentage,
             },
+            "governance": asdict(self.governance),
+            "recency_distribution": self.recency_distribution,
             "languages": [asdict(lang) for lang in self.languages],
             "owners": [asdict(owner) for owner in self.owners],
             "top_starred_repositories": list(self.top_starred_repositories),
@@ -128,6 +146,17 @@ class PortfolioAnalyticsAggregator:
                 archived_count=0,
                 disabled_count=0,
                 active_percentage=0.0,
+                governance=GovernanceDistribution(
+                    fork_count=0,
+                    source_count=0,
+                    fork_percentage=0.0,
+                    public_count=0,
+                    private_count=0,
+                    internal_count=0,
+                    archived_count=0,
+                    archived_percentage=0.0,
+                ),
+                recency_distribution={},
                 languages=(),
                 owners=(),
                 top_starred_repositories=(),
@@ -167,6 +196,30 @@ class PortfolioAnalyticsAggregator:
             1 for m in metrics_list if m.activity_status == ActivityStatus.DISABLED
         )
         active_pct = round((active_count / total_repos) * 100, 2)
+
+        # Governance & Origin breakdown
+        fork_count = sum(1 for m in metrics_list if m.is_fork)
+        source_count = total_repos - fork_count
+        fork_pct = round((fork_count / total_repos) * 100, 2)
+        pub_count = sum(1 for m in metrics_list if m.visibility == "public")
+        priv_count = sum(1 for m in metrics_list if m.visibility == "private")
+        int_count = sum(1 for m in metrics_list if m.visibility == "internal")
+        arch_pct = round((archived_count / total_repos) * 100, 2)
+
+        governance = GovernanceDistribution(
+            fork_count=fork_count,
+            source_count=source_count,
+            fork_percentage=fork_pct,
+            public_count=pub_count,
+            private_count=priv_count,
+            internal_count=int_count,
+            archived_count=archived_count,
+            archived_percentage=arch_pct,
+        )
+
+        # Recency distribution
+        recency_counts = Counter(m.recency_bucket.value for m in metrics_list)
+        recency_distribution = dict(sorted(recency_counts.items()))
 
         # Language distribution
         lang_groups: dict[str, list[RepositoryMetrics]] = defaultdict(list)
@@ -255,6 +308,8 @@ class PortfolioAnalyticsAggregator:
             archived_count=archived_count,
             disabled_count=disabled_count,
             active_percentage=active_pct,
+            governance=governance,
+            recency_distribution=recency_distribution,
             languages=tuple(languages_analytics),
             owners=tuple(owners_analytics),
             top_starred_repositories=top_starred,

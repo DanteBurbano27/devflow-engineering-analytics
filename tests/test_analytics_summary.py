@@ -18,6 +18,8 @@ def make_sample_record(
     forks: int,
     days_ago_push: int,
     is_archived: bool = False,
+    is_fork: bool = False,
+    visibility: str = "public",
 ) -> RepositoryRecord:
     """Helper to produce a RepositoryRecord."""
     now = datetime(2026, 9, 18, 12, 0, 0, tzinfo=UTC)
@@ -27,10 +29,10 @@ def make_sample_record(
         full_name=f"{owner}/{name}",
         owner_login=owner,
         description="Sample",
-        visibility="public",
+        visibility=visibility,
         default_branch="main",
         language=lang,
-        is_fork=False,
+        is_fork=is_fork,
         is_archived=is_archived,
         is_disabled=False,
         created_at=now - timedelta(days=300),
@@ -55,6 +57,15 @@ def test_aggregate_empty_list() -> None:
     assert summary.avg_stars == 0.0
     assert summary.active_count == 0
     assert summary.active_percentage == 0.0
+    assert summary.governance.fork_count == 0
+    assert summary.governance.source_count == 0
+    assert summary.governance.fork_percentage == 0.0
+    assert summary.governance.public_count == 0
+    assert summary.governance.private_count == 0
+    assert summary.governance.internal_count == 0
+    assert summary.governance.archived_count == 0
+    assert summary.governance.archived_percentage == 0.0
+    assert summary.recency_distribution == {}
     assert len(summary.languages) == 0
     assert len(summary.owners) == 0
 
@@ -83,11 +94,18 @@ def test_aggregate_multi_repo_fleet() -> None:
             forks=40,
             days_ago_push=120,
         ),
-        # Inactive Go repo
+        # Inactive Go repo (fork)
         make_sample_record(
-            3, "repo-go-1", "team-beta", "Go", stars=300, forks=60, days_ago_push=250
+            3,
+            "repo-go-1",
+            "team-beta",
+            "Go",
+            stars=300,
+            forks=60,
+            days_ago_push=250,
+            is_fork=True,
         ),
-        # Archived Rust repo
+        # Archived Rust repo (private, pushed 5 days ago)
         make_sample_record(
             4,
             "repo-rs-1",
@@ -95,8 +113,9 @@ def test_aggregate_multi_repo_fleet() -> None:
             "Rust",
             stars=400,
             forks=80,
-            days_ago_push=15,
+            days_ago_push=5,
             is_archived=True,
+            visibility="private",
         ),
     ]
 
@@ -145,7 +164,25 @@ def test_aggregate_multi_repo_fleet() -> None:
     assert owner_map["team-beta"].repository_count == 1
     assert owner_map["team-beta"].total_stars == 300
 
-    # 5. Top Starred Repositories
+    # 5. Governance and Origin Breakdown
+    assert summary.governance.fork_count == 1
+    assert summary.governance.source_count == 3
+    assert summary.governance.fork_percentage == 25.0
+    assert summary.governance.public_count == 3
+    assert summary.governance.private_count == 1
+    assert summary.governance.internal_count == 0
+    assert summary.governance.archived_count == 1
+    assert summary.governance.archived_percentage == 25.0
+
+    # 6. Recency Distribution
+    assert summary.recency_distribution == {
+        "LAST_7_DAYS": 1,
+        "LAST_30_DAYS": 1,
+        "LAST_180_DAYS": 1,
+        "OVER_180_DAYS": 1,
+    }
+
+    # 7. Top Starred Repositories
     assert len(summary.top_starred_repositories) == 4
     assert summary.top_starred_repositories[0]["full_name"] == "team-alpha/repo-rs-1"
     assert summary.top_starred_repositories[0]["stars_count"] == 400
@@ -160,7 +197,11 @@ def test_portfolio_summary_serialization() -> None:
 
     assert "summary_metrics" in data
     assert "activity_health" in data
+    assert "governance" in data
+    assert "recency_distribution" in data
     assert "languages" in data
     assert "owners" in data
     assert "top_starred_repositories" in data
     assert data["summary_metrics"]["total_repositories"] == 0
+    assert data["governance"]["fork_count"] == 0
+    assert data["recency_distribution"] == {}
