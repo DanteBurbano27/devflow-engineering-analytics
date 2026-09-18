@@ -191,3 +191,79 @@ def test_contract_serialization() -> None:
     assert isinstance(record_dict["created_at"], str)
     assert record_dict["created_at"].startswith("2011-01-26")
     assert record_dict["extracted_at"].startswith("2026-07-22")
+
+
+def test_contract_all_21_fields_presence() -> None:
+    """Validate that all 21 fields defined in schema are present and populated."""
+    schema = RepositoryContract.get_schema()
+    assert len(schema.fields) == 21
+
+    record = RepositoryContract.validate(make_valid_payload())
+    record_dict = record.to_dict()
+
+    field_names = {f.name for f in schema.fields}
+    assert set(record_dict.keys()) == field_names
+    for field in schema.fields:
+        val = getattr(record, field.name)
+        if not field.nullable:
+            assert val is not None, f"Non-nullable field {field.name} is None"
+
+
+def test_contract_nullable_fields() -> None:
+    """Nullable fields (description, language, pushed_at) accept None."""
+    payload = make_valid_payload(description=None, language=None, pushed_at=None)
+    record = RepositoryContract.validate(payload)
+    assert record.description is None
+    assert record.language is None
+    assert record.pushed_at is None
+
+
+def test_contract_fails_on_invalid_string_types() -> None:
+    """Non-string description or language must raise ContractValidationError."""
+    with pytest.raises(ContractValidationError) as exc:
+        RepositoryContract.validate(make_valid_payload(description=12345))
+    assert "Field 'description' must be a string or null" in str(exc.value)
+
+    with pytest.raises(ContractValidationError) as exc2:
+        RepositoryContract.validate(make_valid_payload(language=True))
+    assert "Field 'language' must be a string or null" in str(exc2.value)
+
+
+@pytest.mark.parametrize("bool_field", ["is_fork", "is_archived", "is_disabled"])
+def test_contract_fails_on_invalid_boolean_types(bool_field: str) -> None:
+    """Non-bool values in boolean flags must raise ContractValidationError."""
+    with pytest.raises(ContractValidationError) as exc:
+        RepositoryContract.validate(make_valid_payload(**{bool_field: "true"}))
+    assert f"Field '{bool_field}' must be a boolean" in str(exc.value)
+
+    with pytest.raises(ContractValidationError):
+        RepositoryContract.validate(make_valid_payload(**{bool_field: 1}))
+
+
+def test_contract_fails_on_invalid_timestamps() -> None:
+    """Invalid or unparseable timestamps must raise ContractValidationError."""
+    with pytest.raises(ContractValidationError) as exc:
+        RepositoryContract.validate(make_valid_payload(created_at="not-a-date"))
+    assert "Field 'created_at' contains an invalid datetime string" in str(exc.value)
+
+    with pytest.raises(ContractValidationError):
+        RepositoryContract.validate(make_valid_payload(pushed_at="invalid-time"))
+
+
+def test_contract_rejects_naive_datetimes() -> None:
+    """Naive datetimes without timezone offset must be rejected."""
+    naive_dt = datetime(2024, 6, 1, 12, 0, 0)
+    with pytest.raises(ContractValidationError) as exc:
+        RepositoryContract.validate(make_valid_payload(created_at=naive_dt))
+    assert "must be timezone-aware" in str(exc.value)
+
+
+def test_contract_fails_on_empty_branch_and_url() -> None:
+    """Empty default_branch or html_url must raise ContractValidationError."""
+    with pytest.raises(ContractValidationError) as exc:
+        RepositoryContract.validate(make_valid_payload(default_branch="   "))
+    assert "Field 'default_branch' must be a non-empty string" in str(exc.value)
+
+    with pytest.raises(ContractValidationError) as exc2:
+        RepositoryContract.validate(make_valid_payload(html_url=""))
+    assert "Field 'html_url' must be a non-empty string" in str(exc2.value)
