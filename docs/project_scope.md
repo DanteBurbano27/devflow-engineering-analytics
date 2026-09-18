@@ -1,5 +1,8 @@
 # DevFlow Intelligence — Project Scope
 
+> [!NOTE]
+> This document describes the **complete planned vision** for DevFlow Intelligence. As of V1, only the repository metadata and analytical metrics are implemented. Pull request flows, issue resolution times, and the BI dashboard are **planned for V2**.
+
 ## 1. Project overview
 
 DevFlow Intelligence is a batch Data Engineering platform designed to collect, store, transform and analyze public software development activity from GitHub repositories.

@@ -20,7 +20,7 @@
 | `pushed_at` | `datetime` | Yes | UTC timestamp of last push (null if none) |
 | `stars_count` | `int` | No | Number of GitHub stars (non-negative) |
 | `forks_count` | `int` | No | Number of repository forks (non-negative) |
-| `open_issues_count` | `int` | No | Number of open issues (non-negative) |
+| `open_issues_count` | `int` | No | Number of open issues and pull requests (non-negative) |
 | `subscribers_count` | `int` | No | Number of watchers (non-negative) |
 | `size_kb` | `int` | No | Repository size in KB (non-negative) |
 | `html_url` | `str` | No | Canonical GitHub web URL |
