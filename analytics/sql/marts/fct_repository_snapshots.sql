@@ -29,7 +29,10 @@ SELECT
     fork_to_star_ratio,
     issue_to_star_ratio,
     star_to_fork_ratio,
+    issue_to_fork_ratio,
+    issue_density_per_mb,
     days_since_last_push,
+    recency_bucket,
     activity_status,
     is_active
 FROM repository_activity;

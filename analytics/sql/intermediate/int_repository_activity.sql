@@ -38,6 +38,7 @@ enriched AS (
 
         -- 1. Temporal spans (deterministic relative to ingestion timestamp)
         TIMESTAMP_DIFF(extracted_at, created_at, DAY) AS days_since_creation,
+        TIMESTAMP_DIFF(extracted_at, created_at, DAY) AS repository_age_days,
         CASE
             WHEN pushed_at IS NOT NULL
             THEN GREATEST(0, TIMESTAMP_DIFF(extracted_at, pushed_at, DAY))
@@ -62,6 +63,8 @@ enriched AS (
         ROUND(SAFE_DIVIDE(forks_count, stars_count), 4) AS fork_to_star_ratio,
         ROUND(SAFE_DIVIDE(open_issues_count, stars_count), 4) AS issue_to_star_ratio,
         ROUND(SAFE_DIVIDE(stars_count, forks_count), 4) AS star_to_fork_ratio,
+        ROUND(SAFE_DIVIDE(open_issues_count, forks_count), 4) AS issue_to_fork_ratio,
+        ROUND(SAFE_DIVIDE(open_issues_count, SAFE_DIVIDE(size_kb, 1024.0)), 4) AS issue_density_per_mb,
 
         -- 4. Standardized popularity composite index
         ROUND(
@@ -74,7 +77,17 @@ enriched AS (
 
 SELECT
     *,
-    -- 5. Activity Status Categorization
+    -- 5. Recency Bucket
+    CASE
+        WHEN pushed_at IS NULL THEN 'NEVER_PUSHED'
+        WHEN days_since_last_push <= 7 THEN 'LAST_7_DAYS'
+        WHEN days_since_last_push <= 30 THEN 'LAST_30_DAYS'
+        WHEN days_since_last_push <= 90 THEN 'LAST_90_DAYS'
+        WHEN days_since_last_push <= 180 THEN 'LAST_180_DAYS'
+        ELSE 'OVER_180_DAYS'
+    END AS recency_bucket,
+
+    -- 6. Activity Status Categorization
     CASE
         WHEN is_disabled THEN 'DISABLED'
         WHEN is_archived THEN 'ARCHIVED'
