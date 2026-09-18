@@ -72,6 +72,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"Status: {result.status}")
     print(f"Repositories succeeded: {result.repositories_succeeded}")
     print(f"Repositories failed: {result.repositories_failed}")
+    print(f"Raw: {result.raw_path}")
+    print(f"Normalized: {result.normalized_path}")
     print(f"Manifest: {result.manifest_path}")
 
     return {

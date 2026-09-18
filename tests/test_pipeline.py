@@ -74,12 +74,19 @@ def test_pipeline_composes_dependencies_with_one_shared_run_context(
                 repositories_succeeded=2,
                 repositories_failed=0,
                 output_root=output_root,
+                raw_path=output_root / "raw.jsonl",
+                normalized_path=output_root / "normalized.jsonl",
                 manifest_path=output_root / "manifest.json",
             )
 
     monkeypatch.setattr(pipeline, "GitHubClient", build_client)
     monkeypatch.setattr(pipeline, "GitHubRepositoryService", build_service)
     monkeypatch.setattr(pipeline, "GitHubRepositoryBatch", FakeBatch)
+    monkeypatch.setattr(
+        pipeline,
+        "_run_analytics",
+        lambda **kwargs: tmp_path / "data" / "analytics.json",
+    )
 
     result = pipeline.run_pipeline(
         config_path=tmp_path / "repositories.json",
@@ -101,6 +108,8 @@ def test_pipeline_composes_dependencies_with_one_shared_run_context(
         {"name": "client", "status": "success"},
         {"name": "service", "status": "success"},
         {"name": "batch", "status": "success"},
+        {"name": "quality", "status": "success"},
+        {"name": "analytics", "status": "success"},
     ]
 
 
@@ -139,6 +148,8 @@ def test_pipeline_configuration_failure_skips_dependent_stages(
     assert result.error_message == "invalid repository configuration"
     assert [stage.status for stage in result.stages] == [
         pipeline.PipelineStageStatus.FAILED,
+        pipeline.PipelineStageStatus.SKIPPED,
+        pipeline.PipelineStageStatus.SKIPPED,
         pipeline.PipelineStageStatus.SKIPPED,
         pipeline.PipelineStageStatus.SKIPPED,
         pipeline.PipelineStageStatus.SKIPPED,
@@ -193,10 +204,17 @@ def test_pipeline_preserves_batch_terminal_status(
                 repositories_succeeded=int(batch_status == "partial_success"),
                 repositories_failed=1,
                 output_root=output_root,
+                raw_path=output_root / "raw.jsonl",
+                normalized_path=output_root / "normalized.jsonl",
                 manifest_path=output_root / "manifest.json",
             )
 
     monkeypatch.setattr(pipeline, "GitHubRepositoryBatch", FakeBatch)
+    monkeypatch.setattr(
+        pipeline,
+        "_run_analytics",
+        lambda **kwargs: tmp_path / "data" / "analytics.json",
+    )
 
     result = pipeline.run_pipeline(
         config_path=tmp_path / "repositories.json",

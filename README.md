@@ -5,7 +5,7 @@
 [![Tests: Pytest](https://img.shields.io/badge/tests-pytest-green.svg)](https://docs.pytest.org/)
 [![Data Warehouse: BigQuery](https://img.shields.io/badge/warehouse-Google%20BigQuery-4285F4.svg)](https://cloud.google.com/bigquery)
 
-**DevFlow Intelligence** is a production-grade batch Data Engineering and Analytics platform designed to extract, validate, transform, and analyze public software engineering development activity from GitHub.
+**DevFlow Intelligence** is a V1 batch Data Engineering and Analytics platform that extracts, validates, transforms, and analyzes public GitHub repository metadata. It runs locally end to end and includes a mock-tested BigQuery adapter plus warehouse-ready SQL models.
 
 It provides engineering leadership and technical leads with reliable, standardized, and auditable metrics regarding repository maintenance health, developer engagement, and technology stack distributions across multi-repository fleets.
 
@@ -16,8 +16,7 @@ It provides engineering leadership and technical leads with reliable, standardiz
 ```mermaid
 flowchart TD
     subgraph SOURCES["Data Sources"]
-        GHAPI["GitHub REST API\n(Repositories, PRs, Issues)"]
-        GHARCHIVE["GH Archive\n(Hourly Event Logs)"]
+        GHAPI["GitHub REST API\n(Repositories)"]
     end
 
     subgraph INGESTION["Python Ingestion Layer"]
@@ -35,7 +34,7 @@ flowchart TD
     end
 
     subgraph WAREHOUSE["BigQuery Warehouse Models"]
-        STG["stg_github_repositories\n(Cleaned, Deduplicated, FarmFingerprint)"]
+        STG["stg_github_repositories\n(Cleaned Snapshots, FarmFingerprint)"]
         INT["int_repository_activity\n(Activity Status, Safe Ratios)"]
         DIM["dim_repositories\n(Conformed Dimension)"]
         FCT["fct_repository_snapshots\n(Partitioned & Clustered Fact)"]
@@ -48,7 +47,6 @@ flowchart TD
     end
 
     GHAPI --> CLIENT
-    GHARCHIVE --> EXTRACT
     CLIENT --> EXTRACT
     EXTRACT --> NORM
 
@@ -75,9 +73,9 @@ flowchart TD
 1. **Strict Data Contract Architecture**: Enforces explicit schema types, nullability boundaries, and timezone awareness (`UTC`) via `RepositoryContract`, insulating downstream models from upstream API drift.
 2. **Programmatic Data Quality Gate**: Non-destructive `DataQualityEngine` evaluating 16 record- and batch-level rules with clear severity tiers (`ERROR` vs `WARNING`), preventing corrupt records from polluting analytical marts.
 3. **Deterministic Derived Metrics**: Recency calculations (`days_since_last_push`, `recency_bucket`), age (`repository_age_days`), and activity status mappings (`ACTIVE`, `STALE`, `INACTIVE`, `ARCHIVED`, `DISABLED`) execute deterministically relative to ingestion watermarks.
-4. **Cloud Warehouse Readiness (Google BigQuery)**: Pre-built, optimized SQL models implementing staging deduplication with window functions, 64-bit `FARM_FINGERPRINT` surrogate keys, date partitioning (`PARTITION BY DATE(snapshot_timestamp)`), and clustering (`CLUSTER BY repository_id, language`).
+4. **Cloud Warehouse Readiness (Google BigQuery)**: A typed, mock-tested insert adapter and SQL models preserve snapshots, derive 64-bit `FARM_FINGERPRINT` keys, and define partitioning and clustering strategies. Real cloud execution remains environment-dependent.
 5. **Dual-Team Autonomous Collaboration**: Designed under a strict isolation model where the Antigravity Team develops the analytics, contract, and quality foundation while Codex integrates the data platform layer.
-6. **Zero-Dependency Core**: Analytics and data quality engines rely exclusively on Python standard library dataclasses, enums, and typing, guaranteeing lightning-fast offline test execution (< 1s for 109 tests).
+6. **Zero-Dependency Analytics Core**: Analytics and data quality engines rely on Python standard library dataclasses, enums, and typing; the complete offline suite also covers ingestion, orchestration, CI contracts, and the cloud adapter.
 
 ---
 
@@ -126,9 +124,9 @@ python scripts/check_data_quality.py
 
 Located in `analytics/sql/`:
 
-* **`staging/stg_github_repositories.sql`**: Type-casts raw JSON fields, applies null coalescing, generates `repository_surrogate_key` via `FARM_FINGERPRINT`, and eliminates duplicate snapshots using `QUALIFY ROW_NUMBER() OVER (PARTITION BY repository_id ORDER BY extracted_at DESC) = 1`.
-* **`intermediate/int_repository_activity.sql`**: Calculates temporal delays and ratios with `SAFE_DIVIDE`.
-* **`marts/dim_repositories.sql`**: Conformed repository dimension table clustered by `(language, visibility, owner_login)`.
+* **`staging/stg_github_repositories.sql`**: Type-casts raw snapshots, applies null handling, and generates `repository_surrogate_key` via `FARM_FINGERPRINT`.
+* **`intermediate/int_repository_activity.sql`**: Calculates temporal delays and ratios with zero-safe `SAFE_DIVIDE` semantics aligned with Python.
+* **`marts/dim_repositories.sql`**: Selects the latest snapshot for each conformed repository dimension row.
 * **`marts/fct_repository_snapshots.sql`**: Daily snapshot fact table partitioned by `DATE(snapshot_timestamp)` and clustered by `(repository_id, language)`.
 * **`marts/agg_language_summary.sql`**: Aggregated fleet metrics segmented by programming language.
 * **`marts/agg_owner_summary.sql`**: Aggregated portfolio metrics segmented by repository owner.
@@ -162,18 +160,22 @@ devflow-engineering-analytics/
 │   ├── integration_acceptance_checklist.md # Integration contract & boundaries
 │   └── project_scope.md            # Business problem & project scope
 ├── ingestion/                      # GitHub API extraction client & metadata
-│   ├── common/                     # Environment, config, logging
+│   ├── bigquery/                   # Mock-tested BigQuery repository sink
+│   ├── common/                     # Config, logging, sink protocol
 │   └── github/                     # Client, service, batch, metadata
+├── orchestration/                  # Local end-to-end pipeline and stage results
 ├── scripts/                        # Operational CLI diagnostic scripts
 │   ├── check_analytics.py          # Analytics pipeline diagnostic runner
 │   ├── check_data_quality.py       # Data quality validation diagnostic runner
 │   ├── check_environment.py        # Python runtime & dependencies verification
-│   └── check_github_connection.py  # GitHub API connectivity test
-├── tests/                          # Automated pytest suite (109 tests)
+│   ├── check_github_connection.py  # GitHub API connectivity test
+│   └── run_devflow.py              # End-to-end pipeline entrypoint
+├── tests/                          # Offline automated test suite
 │   ├── test_analytics_*.py         # Analytics service & summary unit tests
 │   ├── test_contract_*.py          # Data contract validation tests
 │   ├── test_data_quality_*.py      # Data quality rule & engine tests
 │   └── test_metrics_*.py           # Metric calculation & ratio tests
+├── .github/workflows/ci.yml        # Compile, Ruff, and pytest gates
 ├── pyproject.toml                  # Pytest & Ruff configurations
 └── README.md                       # Main project documentation
 ```
@@ -189,7 +191,7 @@ devflow-engineering-analytics/
 ### 2. Environment Setup
 ```powershell
 # Clone or navigate to the repository
-cd C:\DataEngineering\devflow-antigravity
+cd C:\DataEngineering\devflow-engineering-analytics
 
 # Create and activate virtual environment
 python -m venv .venv
@@ -209,12 +211,15 @@ python scripts/check_analytics.py
 
 # Run data quality test runner
 python scripts/check_data_quality.py
+
+# Run extraction, quality, analytics, and manifest generation
+python -m scripts.run_devflow --config config/repositories.example.json --output-root data
 ```
 
 ### 4. Run Automated Test Suite
 All tests execute without network calls, GitHub tokens, or cloud credentials:
 ```powershell
-# Run pytest suite (109 tests passing)
+# Run the complete offline pytest suite
 python -m pytest
 
 # Run Ruff linter and code formatter check
@@ -228,7 +233,7 @@ python -m ruff format --check .
 
 * **Zero Secret Exposure**: The repository strictly excludes credentials, `.env` files, and GCP service account keys. API tokens are ingested via environment variables (`GITHUB_TOKEN`).
 * **Offline Determinism**: No network dependencies inside unit or analytical tests. Synthetic fixtures ensure 100% reproducible test runs in any CI/CD environment.
-* **Idempotency**: All ingestion and transformation models feature deterministic record hashes and windowed deduplication to safely support pipeline backfills and retries.
+* **Idempotency**: Run IDs and deterministic output paths prevent silent local overwrite; BigQuery insert IDs provide best-effort retry deduplication.
 
 ---
 
@@ -239,9 +244,10 @@ python -m ruff format --check .
 - [x] Analytics layer: Derived recency, engagement ratios, and fleet aggregations (`PortfolioSummary`)
 - [x] Data quality layer: Programmatic rule engine with ERROR/WARNING classification (16 rules)
 - [x] SQL Modeling: BigQuery-ready staging, intermediate, and dimensional marts
-- [x] Comprehensive test suite: 109 automated unit and contract tests (100% passing, offline)
+- [x] Comprehensive offline unit, integration, contract, regression, and warehouse acceptance suite
 - [x] Integration preparation: Acceptance checklist defined (`docs/integration_acceptance_checklist.md`)
-- [ ] Codex Integration: Cloud BigQuery storage adapter & raw bucket persistence (provided by the data-platform layer)
-- [ ] Airflow DAG orchestration: Automated daily incremental extraction (planned / in integration)
-- [ ] CI Pipeline: GitHub Actions continuous integration (provided by the data-platform layer)
+- [x] Codex Integration: Local raw/normalized persistence, manifests, analytics reports, and mock-tested BigQuery adapter
+- [x] V1 orchestration: Reproducible Python entrypoint with run context and stage status
+- [x] CI Pipeline: GitHub Actions compilation, Ruff, and pytest gates
+- [ ] Managed scheduling: Airflow/Dagster deployment (optional V2)
 - [ ] BI Dashboard: Looker Studio analytical dashboards querying BigQuery marts (planned)

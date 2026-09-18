@@ -23,6 +23,7 @@ data/raw/*
 !data/raw/.gitkeep
 data/normalized/
 data/manifests/
+data/analytics/
 
 # Airflow
 airflow.db

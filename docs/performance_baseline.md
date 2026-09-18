@@ -5,13 +5,13 @@ This document establishes the performance and memory baseline for the Antigravit
 
 ## Benchmark Results
 
-The pipeline processes varying loads of synthetic `RepositoryMetadata` records. 
+The pipeline processes varying loads of synthetic `RepositoryMetadata` records.
 
 | Record Count | Execution Time | Peak Memory |
 |--------------|----------------|-------------|
-| 100          | ~0.03 s        | < 0.1 MB    |
-| 1000         | ~0.33 s        | < 0.1 MB    |
-| 10000        | ~3.31 s        | < 0.1 MB    |
+| 100          | 0.0435 s       | 0.02 MB     |
+| 1000         | 0.3943 s       | < 0.01 MB   |
+| 10000        | 3.9482 s       | < 0.01 MB   |
 
 ## Scalability Assessment
-The purely functional and deterministic nature of `RepositoryContract`, `DataQualityEngine`, and `RepositoryMetricCalculator` means that memory overhead is negligible. Each record evaluation is stateless. Execution scales linearly ($O(N)$), taking roughly ~0.3 milliseconds per record. This confirms the system is **Production Ready** to handle large GitHub organization loads in subsequent integration phases.
+The observed single-run benchmark on Python 3.14.6 scales approximately linearly and processes 10,000 synthetic records in under four seconds. These figures are a local comparison point, not a production throughput or total-process memory guarantee; dataset allocation occurs before `tracemalloc` starts.

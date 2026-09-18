@@ -37,4 +37,8 @@ SELECT
     is_active,
     size_category,
     extracted_at AS last_synced_at
-FROM repository_activity;
+FROM repository_activity
+QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY repository_id
+    ORDER BY extracted_at DESC, updated_at DESC
+) = 1;

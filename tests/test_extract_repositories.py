@@ -74,6 +74,8 @@ def test_main_returns_status_code_without_real_github_calls(
                 status=status,
                 repositories_succeeded=1 if status != "failed" else 0,
                 repositories_failed=0 if status == "success" else 1,
+                raw_path=output_root / "raw.jsonl",
+                normalized_path=output_root / "normalized.jsonl",
                 manifest_path=output_root / "manifest.json",
             )
 

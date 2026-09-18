@@ -18,8 +18,19 @@ from analytics.metrics.summary import (
     PortfolioSummary,
 )
 from analytics.quality.engine import DataQualityEngine
-from analytics.quality.models import QualityResult
+from analytics.quality.models import QualityResult, QualitySeverity
 from ingestion.github.repository_metadata import RepositoryMetadata
+
+
+class DataQualityValidationError(ValueError):
+    """Raised when a contract-valid record fails an ERROR quality rule."""
+
+    def __init__(self, quality_result: QualityResult) -> None:
+        super().__init__(
+            "Repository data quality validation failed with "
+            f"{quality_result.error_count} error(s)."
+        )
+        self.quality_result = quality_result
 
 
 class AnalyticsService:
@@ -52,11 +63,13 @@ class AnalyticsService:
 
         Raises ContractValidationError if the record does not satisfy contract.
         """
-        # 1. Quality evaluation (non-destructive)
-        quality_result = self.quality_engine.evaluate_record(item)
-
-        # 2. Contract validation & normalization
+        # 1. Contract validation & normalization
         record = RepositoryContract.validate(item)
+
+        # 2. Quality evaluation (non-destructive)
+        quality_result = self.quality_engine.evaluate_record(record)
+        if not quality_result.is_valid:
+            raise DataQualityValidationError(quality_result)
 
         # 3. Derived metrics calculation
         metrics = self.metric_calculator.calculate(
@@ -81,6 +94,12 @@ class AnalyticsService:
         """
         # 1. Execute batch quality checks
         quality_result = self.quality_engine.evaluate_batch(items)
+        rejected_identifiers = {
+            issue.record_identifier
+            for issue in quality_result.issues
+            if issue.severity == QualitySeverity.ERROR
+            and issue.record_identifier is not None
+        }
 
         # 2. Validate contracts and compute metrics
         valid_records: list[RepositoryRecord] = []
@@ -89,6 +108,11 @@ class AnalyticsService:
         for item in items:
             try:
                 rec = RepositoryContract.validate(item)
+                if (
+                    rec.repository_id in rejected_identifiers
+                    or rec.full_name in rejected_identifiers
+                ):
+                    continue
                 valid_records.append(rec)
                 m = self.metric_calculator.calculate(
                     rec,

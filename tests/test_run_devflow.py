@@ -44,6 +44,9 @@ def test_main_prints_json_result_and_returns_pipeline_exit_code(
             status=status,
             repositories_succeeded=int(status != PipelineStatus.FAILED),
             repositories_failed=int(status != PipelineStatus.SUCCESS),
+            raw_path=output_root / "raw.jsonl",
+            normalized_path=output_root / "normalized.jsonl",
+            analytics_path=output_root / "analytics.json",
             manifest_path=output_root / "manifest.json",
             stages=(),
         )
@@ -82,6 +85,9 @@ def test_main_keeps_structured_logs_out_of_json_stdout(
             status=PipelineStatus.SUCCESS,
             repositories_succeeded=1,
             repositories_failed=0,
+            raw_path=output_root / "raw.jsonl",
+            normalized_path=output_root / "normalized.jsonl",
+            analytics_path=output_root / "analytics.json",
             manifest_path=output_root / "manifest.json",
             stages=(),
         )

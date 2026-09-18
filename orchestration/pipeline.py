@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import logging
+import os
+import tempfile
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -9,6 +13,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
+from analytics.service import AnalyticsService, DataQualityValidationError
 from ingestion.common.config import ConfigurationError, Settings
 from ingestion.common.logging import configure_logging
 from ingestion.github.client import GitHubClient
@@ -21,6 +26,8 @@ from ingestion.github.repository_batch import (
 from ingestion.github.repository_service import GitHubRepositoryService
 
 type Clock = Callable[[], datetime]
+
+logger = logging.getLogger(__name__)
 
 
 class PipelineStatus(StrEnum):
@@ -61,6 +68,9 @@ class PipelineResult:
     status: PipelineStatus
     repositories_succeeded: int
     repositories_failed: int
+    raw_path: Path | None
+    normalized_path: Path | None
+    analytics_path: Path | None
     manifest_path: Path | None
     stages: tuple[PipelineStageResult, ...]
     error_type: str | None = None
@@ -85,6 +95,13 @@ class PipelineResult:
             "exit_code": self.exit_code,
             "repositories_succeeded": self.repositories_succeeded,
             "repositories_failed": self.repositories_failed,
+            "raw_path": str(self.raw_path) if self.raw_path is not None else None,
+            "normalized_path": (
+                str(self.normalized_path) if self.normalized_path is not None else None
+            ),
+            "analytics_path": (
+                str(self.analytics_path) if self.analytics_path is not None else None
+            ),
             "manifest_path": (
                 str(self.manifest_path) if self.manifest_path is not None else None
             ),
@@ -113,7 +130,9 @@ def run_pipeline(
         configure_logging(settings.log_level)
     except (ConfigurationError, RepositoryBatchConfigurationError) as exc:
         stages.append(_stage("configuration", PipelineStageStatus.FAILED))
-        stages.extend(_skipped_stages("client", "service", "batch"))
+        stages.extend(
+            _skipped_stages("client", "service", "batch", "quality", "analytics")
+        )
         return _failed_result(
             run_id=run_id,
             started_at=started_at,
@@ -124,6 +143,15 @@ def run_pipeline(
         )
 
     stages.append(_stage("configuration", PipelineStageStatus.SUCCESS))
+    logger.info(
+        "DevFlow pipeline started.",
+        extra={
+            "operation": "devflow_pipeline",
+            "run_id": run_id,
+            "stage": "configuration",
+            "status": "success",
+        },
+    )
 
     try:
         client = GitHubClient(
@@ -136,7 +164,7 @@ def run_pipeline(
         )
     except (TypeError, ValueError) as exc:
         stages.append(_stage("client", PipelineStageStatus.FAILED))
-        stages.extend(_skipped_stages("service", "batch"))
+        stages.extend(_skipped_stages("service", "batch", "quality", "analytics"))
         return _failed_result(
             run_id=run_id,
             started_at=started_at,
@@ -163,6 +191,7 @@ def run_pipeline(
         )
     except OSError as exc:
         stages.append(_stage("batch", PipelineStageStatus.FAILED))
+        stages.extend(_skipped_stages("quality", "analytics"))
         return _failed_result(
             run_id=run_id,
             started_at=started_at,
@@ -173,12 +202,176 @@ def run_pipeline(
         )
 
     stages.append(_stage("batch", PipelineStageStatus.SUCCESS))
+
+    if batch_result.repositories_succeeded == 0:
+        stages.extend(_skipped_stages("quality", "analytics"))
+        return _successful_result(
+            batch_result=batch_result,
+            started_at=started_at,
+            extracted_at=extracted_at,
+            stages=stages,
+            analytics_path=None,
+        )
+
+    try:
+        analytics_path = _run_analytics(
+            batch_result=batch_result,
+            extracted_at=extracted_at,
+        )
+    except (DataQualityValidationError, OSError, ValueError) as exc:
+        stages.append(_stage("quality", PipelineStageStatus.FAILED))
+        stages.append(_stage("analytics", PipelineStageStatus.SKIPPED))
+        logger.error(
+            "DevFlow pipeline analytics gate failed.",
+            extra={
+                "operation": "devflow_pipeline",
+                "run_id": run_id,
+                "stage": "quality",
+                "status": "failed",
+                "error_type": type(exc).__name__,
+            },
+        )
+        return _post_batch_failed_result(
+            batch_result=batch_result,
+            started_at=started_at,
+            extracted_at=extracted_at,
+            stages=stages,
+            error=exc,
+        )
+
+    stages.append(_stage("quality", PipelineStageStatus.SUCCESS))
+    stages.append(_stage("analytics", PipelineStageStatus.SUCCESS))
+    logger.info(
+        "DevFlow pipeline completed.",
+        extra={
+            "operation": "devflow_pipeline",
+            "run_id": run_id,
+            "stage": "analytics",
+            "status": batch_result.status,
+            "repositories_succeeded": batch_result.repositories_succeeded,
+            "repositories_failed": batch_result.repositories_failed,
+        },
+    )
     return _successful_result(
         batch_result=batch_result,
         started_at=started_at,
         extracted_at=extracted_at,
         stages=stages,
+        analytics_path=analytics_path,
     )
+
+
+def _run_analytics(
+    *,
+    batch_result: RepositoryBatchResult,
+    extracted_at: datetime,
+) -> Path:
+    """Validate normalized output, run quality and analytics, and publish a report."""
+    records = _load_json_lines(batch_result.normalized_path)
+    metrics, quality_result, portfolio = AnalyticsService().process_batch(
+        records,
+        reference_time=extracted_at,
+        fail_on_contract_error=True,
+    )
+    if not quality_result.is_valid:
+        raise DataQualityValidationError(quality_result)
+
+    analytics_path = (
+        batch_result.output_root
+        / "analytics"
+        / "github"
+        / "repositories"
+        / f"extraction_date={extracted_at.date().isoformat()}"
+        / f"run_id={batch_result.run_id}"
+        / "report.json"
+    )
+    report = {
+        "meta": {
+            "run_id": batch_result.run_id,
+            "generated_at": extracted_at.isoformat(),
+            "total_input_records": len(records),
+            "processed_records": len(metrics),
+        },
+        "quality": quality_result.to_dict(),
+        "portfolio": portfolio.to_dict(),
+        "repositories": [metric.to_dict() for metric in metrics],
+    }
+    _write_json_atomically(analytics_path, report)
+    _enrich_manifest(
+        batch_result=batch_result,
+        analytics_path=analytics_path,
+        analytics_records_written=len(metrics),
+        quality_summary=quality_result.to_dict()["summary"],
+    )
+    return analytics_path
+
+
+def _load_json_lines(path: Path) -> list[dict[str, Any]]:
+    """Load normalized JSON Lines and require one object per non-empty line."""
+    records: list[dict[str, Any]] = []
+    with path.open(encoding="utf-8") as normalized_file:
+        for line_number, line in enumerate(normalized_file, start=1):
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            if not isinstance(record, dict):
+                raise ValueError(
+                    f"Normalized record at line {line_number} must be a JSON object."
+                )
+            records.append(record)
+    return records
+
+
+def _enrich_manifest(
+    *,
+    batch_result: RepositoryBatchResult,
+    analytics_path: Path,
+    analytics_records_written: int,
+    quality_summary: dict[str, Any],
+) -> None:
+    """Publish analytics and quality evidence into the execution manifest."""
+    with batch_result.manifest_path.open(encoding="utf-8") as manifest_file:
+        manifest = json.load(manifest_file)
+    if not isinstance(manifest, dict):
+        raise ValueError("Execution manifest must be a JSON object.")
+
+    manifest.update(
+        {
+            "pipeline_status": batch_result.status,
+            "analytics_output": analytics_path.relative_to(
+                batch_result.output_root
+            ).as_posix(),
+            "analytics_records_written": analytics_records_written,
+            "quality": quality_summary,
+        }
+    )
+    _write_json_atomically(batch_result.manifest_path, manifest, replace=True)
+
+
+def _write_json_atomically(
+    destination: Path,
+    document: dict[str, Any],
+    *,
+    replace: bool = False,
+) -> None:
+    """Write a JSON document beside its destination and publish it atomically."""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists() and not replace:
+        raise FileExistsError(f"Pipeline output already exists: {destination}")
+    file_descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{destination.name}.",
+        suffix=".tmp",
+        dir=destination.parent,
+    )
+    os.close(file_descriptor)
+    temporary_path = Path(temporary_name)
+    try:
+        with temporary_path.open("w", encoding="utf-8", newline="\n") as output:
+            json.dump(document, output, ensure_ascii=False, indent=2)
+            output.write("\n")
+        os.replace(temporary_path, destination)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 class _BatchClock:
@@ -244,6 +437,9 @@ def _failed_result(
         status=PipelineStatus.FAILED,
         repositories_succeeded=0,
         repositories_failed=0,
+        raw_path=None,
+        normalized_path=None,
+        analytics_path=None,
         manifest_path=None,
         stages=tuple(stages),
         error_type=type(error).__name__,
@@ -257,6 +453,7 @@ def _successful_result(
     started_at: datetime,
     extracted_at: datetime,
     stages: list[PipelineStageResult],
+    analytics_path: Path | None,
 ) -> PipelineResult:
     """Adapt a repository batch result to the public pipeline contract."""
     return PipelineResult(
@@ -266,6 +463,35 @@ def _successful_result(
         status=PipelineStatus(batch_result.status),
         repositories_succeeded=batch_result.repositories_succeeded,
         repositories_failed=batch_result.repositories_failed,
+        raw_path=batch_result.raw_path,
+        normalized_path=batch_result.normalized_path,
+        analytics_path=analytics_path,
         manifest_path=batch_result.manifest_path,
         stages=tuple(stages),
+    )
+
+
+def _post_batch_failed_result(
+    *,
+    batch_result: RepositoryBatchResult,
+    started_at: datetime,
+    extracted_at: datetime,
+    stages: list[PipelineStageResult],
+    error: Exception,
+) -> PipelineResult:
+    """Return a safe failure while preserving committed extraction outputs."""
+    return PipelineResult(
+        run_id=batch_result.run_id,
+        started_at=started_at,
+        extracted_at=extracted_at,
+        status=PipelineStatus.FAILED,
+        repositories_succeeded=batch_result.repositories_succeeded,
+        repositories_failed=batch_result.repositories_failed,
+        raw_path=batch_result.raw_path,
+        normalized_path=batch_result.normalized_path,
+        analytics_path=None,
+        manifest_path=batch_result.manifest_path,
+        stages=tuple(stages),
+        error_type=type(error).__name__,
+        error_message="Normalized output failed quality or analytics validation.",
     )

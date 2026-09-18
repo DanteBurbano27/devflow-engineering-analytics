@@ -4,7 +4,7 @@
 -- Dialect: Google Cloud BigQuery
 -- Description: Enriches staging repository records with derived temporal metrics,
 --              activity classifications, technical ratios, and popularity scores.
--- Granularity: One row per repository
+-- Granularity: One row per repository extraction snapshot
 -- =============================================================================
 
 WITH staging AS (
@@ -60,11 +60,17 @@ enriched AS (
         END AS size_category,
 
         -- 3. Technical & Engagement Ratios (zero-division safe)
-        ROUND(SAFE_DIVIDE(forks_count, stars_count), 4) AS fork_to_star_ratio,
-        ROUND(SAFE_DIVIDE(open_issues_count, stars_count), 4) AS issue_to_star_ratio,
-        ROUND(SAFE_DIVIDE(stars_count, forks_count), 4) AS star_to_fork_ratio,
-        ROUND(SAFE_DIVIDE(open_issues_count, forks_count), 4) AS issue_to_fork_ratio,
-        ROUND(SAFE_DIVIDE(open_issues_count, SAFE_DIVIDE(size_kb, 1024.0)), 4) AS issue_density_per_mb,
+        ROUND(COALESCE(SAFE_DIVIDE(forks_count, stars_count), 0.0), 4) AS fork_to_star_ratio,
+        ROUND(COALESCE(SAFE_DIVIDE(open_issues_count, stars_count), 0.0), 4) AS issue_to_star_ratio,
+        ROUND(COALESCE(SAFE_DIVIDE(stars_count, forks_count), 0.0), 4) AS star_to_fork_ratio,
+        ROUND(COALESCE(SAFE_DIVIDE(open_issues_count, forks_count), 0.0), 4) AS issue_to_fork_ratio,
+        ROUND(
+            COALESCE(
+                SAFE_DIVIDE(open_issues_count, SAFE_DIVIDE(size_kb, 1024.0)),
+                0.0
+            ),
+            4
+        ) AS issue_density_per_mb,
 
         -- 4. Standardized popularity composite index
         ROUND(

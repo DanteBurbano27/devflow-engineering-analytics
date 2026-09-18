@@ -26,11 +26,12 @@ from analytics.quality.models import (
     QualityResult,
     QualitySeverity,
 )
-from analytics.service import AnalyticsService
+from analytics.service import AnalyticsService, DataQualityValidationError
 
 __all__ = [
     "ActivityStatus",
     "AnalyticsService",
+    "DataQualityValidationError",
     "DataQualityEngine",
     "GovernanceDistribution",
     "PortfolioAnalyticsAggregator",

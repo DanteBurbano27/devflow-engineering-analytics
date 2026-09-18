@@ -2,9 +2,8 @@
 -- Model: stg_github_repositories
 -- Layer: Staging
 -- Dialect: Google Cloud BigQuery
--- Description: Cleans, casts, and deduplicates raw ingested GitHub repository
---              metadata records into a standard analytical staging structure.
--- Granularity: One row per unique repository_id (latest extracted snapshot)
+-- Description: Cleans and casts raw ingested GitHub repository snapshots.
+-- Granularity: One row per repository extraction snapshot
 -- =============================================================================
 
 WITH raw_source AS (
@@ -37,42 +36,13 @@ WITH raw_source AS (
         AND repository_id > 0
         AND full_name IS NOT NULL
         AND LENGTH(TRIM(full_name)) > 0
-),
-
-deduplicated AS (
-    SELECT
-        -- Surrogate key generated via deterministic 64-bit FarmFingerprint
-        FARM_FINGERPRINT(CONCAT(CAST(repository_id AS STRING), '|', full_name)) AS repository_surrogate_key,
-        repository_id,
-        repository_name,
-        full_name,
-        owner_login,
-        description,
-        visibility,
-        default_branch,
-        language,
-        is_fork,
-        is_archived,
-        is_disabled,
-        created_at,
-        updated_at,
-        pushed_at,
-        stars_count,
-        forks_count,
-        open_issues_count,
-        subscribers_count,
-        size_kb,
-        html_url,
-        extracted_at,
-        ROW_NUMBER() OVER (
-            PARTITION BY repository_id
-            ORDER BY extracted_at DESC, updated_at DESC
-        ) AS dedup_rank
-    FROM raw_source
 )
 
 SELECT
-    repository_surrogate_key,
+    -- Stable repository identity; extracted_at remains the snapshot identity.
+    FARM_FINGERPRINT(
+        CONCAT(CAST(repository_id AS STRING), '|', full_name)
+    ) AS repository_surrogate_key,
     repository_id,
     repository_name,
     full_name,
@@ -94,5 +64,4 @@ SELECT
     size_kb,
     html_url,
     extracted_at
-FROM deduplicated
-WHERE dedup_rank = 1;
+FROM raw_source;

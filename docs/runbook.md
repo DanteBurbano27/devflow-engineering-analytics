@@ -10,4 +10,4 @@ This runbook covers the standard operating procedures for the Antigravity Analyt
 
 ## Service Level Objectives (SLOs)
 - **TARGET (Phase 3)**: 99.9% of valid records processed within 5 seconds.
-- **CURRENTLY IMPLEMENTED (Phase 2C)**: Local deterministic batch validation runs at ~3,000 records/sec.
+- **CURRENTLY OBSERVED (V1 local benchmark)**: Contract, quality, and metric processing completed 10,000 synthetic records in 3.9482 seconds (~2,533 records/sec) on Python 3.14.6. This is not a production SLO.

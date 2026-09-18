@@ -182,4 +182,4 @@ For the analytics and SQL layer to run without manual adjustments, Codex must pr
 |---|---|---|---|
 | Phase 1: Analytics & Quality Engine | Complete analytical layer | **PASSED** | Antigravity Team |
 | Phase 2B: Hardening & Integration Readiness | Contract tests, ratios, recency, SQL models, checklist | **PASSED** | Antigravity Team |
-| Final Integration: Codex Data Platform | Ingestion, GCS storage, Airflow DAG, CI pipeline | *Pending Codex Quota Recovery* | Codex Team |
+| Final Integration: Codex Data Platform | Ingestion, local storage, Python orchestration, CI, mock-tested BigQuery adapter | **PASSED LOCALLY** | Codex Team |

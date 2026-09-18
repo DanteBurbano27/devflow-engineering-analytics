@@ -27,7 +27,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check -r requirements-lock.txt
 
       - name: Compile Python sources
-        run: python -m compileall ingestion orchestration scripts
+        run: python -m compileall analytics ingestion orchestration scripts
 
       - name: Ruff lint
         run: python -m ruff check .

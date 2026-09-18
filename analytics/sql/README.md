@@ -1,6 +1,6 @@
 # DevFlow Intelligence — BigQuery Warehouse Models
 
-This directory contains production-ready, BigQuery-optimized SQL models implementing the dimensional architecture for software engineering repository analytics.
+This directory contains BigQuery-ready SQL models for the repository analytics dimensional architecture. They are covered by static acceptance tests; real BigQuery execution is not claimed without cloud credentials and a deployed project.
 
 ## Modeling Architecture
 
@@ -9,7 +9,7 @@ This directory contains production-ready, BigQuery-optimized SQL models implemen
                 │
                 ▼
   [Staging: stg_github_repositories]
-         (Types, Deduplication, Nulls)
+       (Types, Nulls, All Snapshots)
                 │
                 ▼
 [Intermediate: int_repository_activity]
@@ -29,8 +29,8 @@ This directory contains production-ready, BigQuery-optimized SQL models implemen
 
 | Layer | Model | Materialization | Primary Key / Granularity | Description |
 |---|---|---|---|---|
-| Staging | `stg_github_repositories` | View / Incremental | `repository_id` | Cleans, casts, and deduplicates raw metadata by latest `extracted_at`. |
-| Intermediate | `int_repository_activity` | Ephemeral / View | `repository_id` | Calculates `days_since_last_push`, ratios, and `activity_status`. |
+| Staging | `stg_github_repositories` | View / Incremental | `(repository_id, extracted_at)` | Cleans and casts every raw snapshot. |
+| Intermediate | `int_repository_activity` | Ephemeral / View | `(repository_id, extracted_at)` | Calculates snapshot-level activity metrics. |
 | Marts | `dim_repositories` | Table | `repository_surrogate_key` | Conformed repository dimension with latest attributes and statuses. |
 | Marts | `fct_repository_snapshots` | Incremental Table | `(snapshot_date, repository_id)` | Fact table partitioned by `snapshot_date` capturing daily snapshot metrics. |
 | Marts | `agg_language_summary` | View / Table | `language` | Fleet-level aggregated metrics segmented by programming language. |
@@ -50,7 +50,7 @@ This directory contains production-ready, BigQuery-optimized SQL models implemen
 - `dim_repositories`: Clustered by `(language, visibility, owner_login)`.
 
 ### 3. Idempotency & Deduplication
-- Staging deduplicates records with window functions:
+- The repository dimension selects the latest snapshot with a window function:
   ```sql
   ROW_NUMBER() OVER (PARTITION BY repository_id ORDER BY extracted_at DESC, updated_at DESC)
   ```

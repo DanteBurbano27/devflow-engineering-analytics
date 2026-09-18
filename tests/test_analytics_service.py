@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from analytics.contracts.repository import ContractValidationError
-from analytics.service import AnalyticsService
+from analytics.service import AnalyticsService, DataQualityValidationError
 
 
 def make_payload(
@@ -116,6 +116,37 @@ def test_service_process_batch_fail_on_contract_error() -> None:
 
     with pytest.raises(ContractValidationError):
         service.process_batch(batch, fail_on_contract_error=True)
+
+
+def test_service_does_not_promote_contract_valid_quality_error() -> None:
+    """A temporal quality error must stop metrics promotion."""
+    service = AnalyticsService()
+    payload = make_payload(
+        1,
+        "repo-1",
+        "org",
+        stars=50,
+        created_at="2026-09-18T12:00:00+00:00",
+        updated_at="2026-09-17T12:00:00+00:00",
+    )
+
+    with pytest.raises(DataQualityValidationError):
+        service.process_record(payload)
+
+
+def test_service_filters_duplicate_batch_id_from_analytics() -> None:
+    """Batch-level uniqueness errors must prevent duplicate promotion."""
+    service = AnalyticsService()
+    batch = [
+        make_payload(1, "repo-1", "org", stars=100),
+        make_payload(1, "repo-2", "org", stars=200),
+    ]
+
+    metrics_list, quality_result, summary = service.process_batch(batch)
+
+    assert quality_result.is_valid is False
+    assert metrics_list == []
+    assert summary.total_repositories == 0
 
 
 def test_service_generate_report() -> None:

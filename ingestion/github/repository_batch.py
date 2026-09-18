@@ -64,6 +64,8 @@ class RepositoryBatchResult:
     repositories_succeeded: int
     repositories_failed: int
     output_root: Path
+    raw_path: Path
+    normalized_path: Path
     manifest_path: Path
 
 
@@ -264,6 +266,8 @@ class GitHubRepositoryBatch:
             repositories_succeeded=succeeded,
             repositories_failed=failed,
             output_root=output_root,
+            raw_path=paths.raw,
+            normalized_path=paths.normalized,
             manifest_path=paths.manifest,
         )
 
