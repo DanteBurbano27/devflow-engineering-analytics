@@ -77,7 +77,7 @@ class RepositoryMetadata:
         )
 
         return cls(
-            repository_id=_require_non_negative_integer(
+            repository_id=_require_positive_integer(
                 payload,
                 field_name="id",
             ),
@@ -259,6 +259,22 @@ def _require_non_negative_integer(
 
     if value < 0:
         raise RepositoryMetadataError(f"Field '{field_name}' cannot be negative.")
+
+    return value
+
+
+def _require_positive_integer(
+    payload: Mapping[str, Any],
+    *,
+    field_name: str,
+) -> int:
+    """Return a required strictly positive integer field."""
+    value = _require_non_negative_integer(payload, field_name=field_name)
+
+    if value == 0:
+        raise RepositoryMetadataError(
+            f"Field '{field_name}' must be greater than zero."
+        )
 
     return value
 

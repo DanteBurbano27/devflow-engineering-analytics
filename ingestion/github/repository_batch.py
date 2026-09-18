@@ -167,6 +167,16 @@ class GitHubRepositoryBatch:
         )
         _reject_existing_outputs(paths)
 
+        logger.info(
+            "GitHub repository batch started.",
+            extra={
+                "operation": "github_repository_batch",
+                "run_id": run_id,
+                "status": "started",
+                "repositories_requested": len(config.repositories),
+            },
+        )
+
         raw_records: list[dict[str, Any]] = []
         normalized_records: list[dict[str, Any]] = []
         errors: list[dict[str, str]] = []
@@ -197,6 +207,7 @@ class GitHubRepositoryBatch:
                     "GitHub repository batch item failed.",
                     extra={
                         "operation": "github_repository_batch_item",
+                        "run_id": run_id,
                         "owner": repository.owner,
                         "repository": repository.name,
                         "error_type": error["error_type"],
@@ -218,6 +229,8 @@ class GitHubRepositoryBatch:
             "repositories_requested": len(config.repositories),
             "repositories_succeeded": succeeded,
             "repositories_failed": failed,
+            "raw_records_written": succeeded,
+            "normalized_records_written": succeeded,
             "raw_output": paths.raw.relative_to(output_root).as_posix(),
             "normalized_output": paths.normalized.relative_to(output_root).as_posix(),
             "errors": errors,
@@ -230,6 +243,19 @@ class GitHubRepositoryBatch:
             manifest_fields=manifest_fields,
             run_id=run_id,
             clock=self._clock,
+        )
+
+        logger.info(
+            "GitHub repository batch completed.",
+            extra={
+                "operation": "github_repository_batch",
+                "run_id": run_id,
+                "status": status,
+                "repositories_succeeded": succeeded,
+                "repositories_failed": failed,
+                "raw_records_written": succeeded,
+                "normalized_records_written": succeeded,
+            },
         )
 
         return RepositoryBatchResult(

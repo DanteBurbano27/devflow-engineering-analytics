@@ -156,6 +156,20 @@ def test_negative_repository_metric_is_rejected() -> None:
         RepositoryMetadata.from_github_payload(payload)
 
 
+def test_zero_repository_id_is_rejected() -> None:
+    """GitHub repository identifiers must satisfy the analytics contract."""
+    payload = {
+        **VALID_PAYLOAD,
+        "id": 0,
+    }
+
+    with pytest.raises(
+        RepositoryMetadataError,
+        match="id.*greater than zero",
+    ):
+        RepositoryMetadata.from_github_payload(payload)
+
+
 def test_naive_extraction_datetime_is_rejected() -> None:
     """The extraction timestamp must include timezone information."""
     naive_datetime = datetime(

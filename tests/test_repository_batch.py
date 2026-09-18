@@ -227,6 +227,8 @@ def test_batch_persists_raw_normalized_and_manifest_with_shared_timestamp(
     assert manifest["repositories_requested"] == 2
     assert manifest["repositories_succeeded"] == 2
     assert manifest["repositories_failed"] == 0
+    assert manifest["raw_records_written"] == 2
+    assert manifest["normalized_records_written"] == 2
     assert manifest["raw_output"].startswith("raw/")
     assert manifest["normalized_output"].startswith("normalized/")
     assert "\\" not in manifest["raw_output"]
@@ -255,6 +257,7 @@ def test_batch_persists_raw_normalized_and_manifest_with_shared_timestamp(
 
 def test_batch_continues_after_failure_and_reports_partial_success(
     tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """One repository failure must not stop subsequent repositories."""
     times = [datetime(2026, 7, 23, 13, 0, second, tzinfo=UTC) for second in (0, 1, 2)]
@@ -291,6 +294,12 @@ def test_batch_continues_after_failure_and_reports_partial_success(
         }
     ]
     assert service.extract_repository_with_payload.call_count == 2
+    failure_record = next(
+        record
+        for record in caplog.records
+        if record.getMessage() == "GitHub repository batch item failed."
+    )
+    assert failure_record.run_id == result.run_id
 
 
 def test_batch_continues_without_orphan_raw_after_serialization_failure(
