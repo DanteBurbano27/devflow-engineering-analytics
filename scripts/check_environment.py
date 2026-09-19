@@ -3,7 +3,12 @@
 import sys
 from importlib.metadata import PackageNotFoundError, version
 
-from ingestion.common.environment import (
+if __package__ in {None, ""}:
+    from _entrypoint import add_repository_root_to_path
+
+    add_repository_root_to_path()
+
+from ingestion.common.environment import (  # noqa: E402
     MINIMUM_PYTHON_VERSION,
     is_supported_python,
 )
