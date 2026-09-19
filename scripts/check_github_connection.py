@@ -2,10 +2,15 @@
 
 from typing import Any
 
-from ingestion.common.config import ConfigurationError, Settings
-from ingestion.common.logging import configure_logging
-from ingestion.github.client import GitHubClient
-from ingestion.github.exceptions import GitHubAPIError
+if __package__ in {None, ""}:
+    from _entrypoint import add_repository_root_to_path
+
+    add_repository_root_to_path()
+
+from ingestion.common.config import ConfigurationError, Settings  # noqa: E402
+from ingestion.common.logging import configure_logging  # noqa: E402
+from ingestion.github.client import GitHubClient  # noqa: E402
+from ingestion.github.exceptions import GitHubAPIError  # noqa: E402
 
 
 def require_mapping(
