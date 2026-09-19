@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 from dotenv import load_dotenv
 
+from ingestion.common.url import normalize_https_base_url
+
 
 class ConfigurationError(RuntimeError):
     """Raised when the application configuration is invalid."""
@@ -36,10 +38,15 @@ class Settings:
                 "GITHUB_TOKEN is missing. Add it to the local .env file."
             )
 
-        github_api_base_url = os.getenv(
-            "GITHUB_API_BASE_URL",
-            "https://api.github.com",
-        ).strip()
+        try:
+            github_api_base_url = normalize_https_base_url(
+                os.getenv(
+                    "GITHUB_API_BASE_URL",
+                    "https://api.github.com",
+                )
+            )
+        except ValueError as exc:
+            raise ConfigurationError(str(exc)) from exc
 
         github_api_version = os.getenv(
             "GITHUB_API_VERSION",
