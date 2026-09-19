@@ -7,7 +7,7 @@
 
 **DevFlow Intelligence** is a V1 batch Data Engineering and Analytics platform that extracts, validates, transforms, and analyzes public GitHub repository metadata. It runs locally end to end and includes a mock-tested BigQuery adapter plus warehouse-ready SQL models.
 
-It provides engineering leadership and technical leads with reliable, standardized, and auditable metrics regarding repository maintenance health, developer engagement, and technology stack distributions across multi-repository fleets.
+It provides engineering leadership and technical leads with reliable, standardized, and auditable metrics regarding repository maintenance health, community interest, and technology stack distributions across multi-repository fleets.
 
 ---
 
@@ -25,7 +25,7 @@ flowchart TD
         NORM["Metadata Normalizer\n(RepositoryMetadata)"]
     end
 
-    subgraph ANALYTICS_QUALITY["Analytics & Quality Layer (Antigravity)"]
+    subgraph ANALYTICS_QUALITY["Analytics & Quality Layer"]
         direction TB
         CONTRACT["Data Contract Enforcement\n(RepositoryContract Schema)"]
         DQ["Data Quality Engine\n(13+ Rules: ERROR / WARNING)"]
@@ -42,7 +42,7 @@ flowchart TD
     end
 
     subgraph CONSUMPTION["Consumption Layer"]
-        DASH["Looker Studio Dashboard"]
+        DASH["Looker Studio Dashboard (Planned V2)"]
         REPORTS["Automated Fleet Audit Reports"]
     end
 
@@ -74,25 +74,25 @@ flowchart TD
 2. **Programmatic Data Quality Gate**: Non-destructive `DataQualityEngine` evaluating 16 record- and batch-level rules with clear severity tiers (`ERROR` vs `WARNING`), preventing corrupt records from polluting analytical marts.
 3. **Deterministic Derived Metrics**: Recency calculations (`days_since_last_push`, `recency_bucket`), age (`repository_age_days`), and activity status mappings (`ACTIVE`, `STALE`, `INACTIVE`, `ARCHIVED`, `DISABLED`) execute deterministically relative to ingestion watermarks.
 4. **Cloud Warehouse Readiness (Google BigQuery)**: A typed, mock-tested insert adapter and SQL models preserve snapshots, derive 64-bit `FARM_FINGERPRINT` keys, and define partitioning and clustering strategies. Real cloud execution remains environment-dependent.
-5. **Dual-Team Autonomous Collaboration**: Designed under a strict isolation model where the Antigravity Team develops the analytics, contract, and quality foundation while Codex integrates the data platform layer.
+5. **Dual-Team Autonomous Collaboration**: Developed under a strict isolation model where the Analytics & Quality foundation is decoupled from the Data Platform ingestion layer.
 6. **Zero-Dependency Analytics Core**: Analytics and data quality engines rely on Python standard library dataclasses, enums, and typing; the complete offline suite also covers ingestion, orchestration, CI contracts, and the cloud adapter.
 
 ---
 
 ## Business Problem & Metric Definitions
 
-Engineering managers overseeing multiple repositories require centralized visibility into maintenance activity, pull request flows, and repository freshness. DevFlow Intelligence provides mathematically sound and defensible answers to core questions:
+Engineering managers overseeing multiple repositories require centralized visibility into maintenance activity, open issue volumes, and repository freshness. DevFlow Intelligence provides mathematically sound and defensible answers to core questions:
 
 ### 1. Activity Status & Recency Classification
-* **`ACTIVE`**: Repository pushed within the last 90 days, not archived, not disabled.
+* **`ACTIVE`**: Repository pushed within the last 90 days, not archived, not disabled. (Note: 90/180-day thresholds are internal analytical rules, not GitHub standards).
 * **`STALE`**: Repository pushed between 91 and 180 days ago.
 * **`INACTIVE`**: Repository without pushes in > 180 days or without any recorded pushes.
 * **`ARCHIVED`**: Explicitly marked archived by owner.
 * **`DISABLED`**: Explicitly disabled repository.
 * **`recency_bucket`**: Categorized time window of last push (`LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`, `LAST_180_DAYS`, `OVER_180_DAYS`, `NEVER_PUSHED`).
 
-### 2. Engagement & Technical Ratios
-* **`fork_to_star_ratio`**: Measures community contribution tendency vs passive starring.
+### 2. Community & Technical Ratios
+* **`fork_to_star_ratio`**: Compares the volume of repository forks to stars (does not guarantee code contribution).
 * **`issue_to_star_ratio`**: Identifies repositories with disproportionate issue backlogs relative to star base.
 * **`issue_to_fork_ratio`**: Relates issue volume to active fork maintenance.
 * **`issue_density_per_mb`**: Evaluates backlog density normalized by repository codebase size (MB).
@@ -110,7 +110,7 @@ The pipeline implements an automated data quality gate distinguishing between fa
 | Severity | Action | Examples |
 |---|---|---|
 | **`ERROR`** | Rejects or flags record as invalid; halts analytical promotion | Negative stars/forks, invalid repository ID, empty owner/name, identity mismatch between full_name and owner, missing `extracted_at`, batch duplicates |
-| **`WARNING`** | Records operational observation; allows processing | `pushed_at` earlier than `created_at`, non-standard URL scheme, empty repository (0 KB) |
+| **`WARNING`** | Records operational observation; allows processing | `pushed_at` earlier than `created_at`, non-standard URL scheme |
 | **`INFO`** | Diagnostic tracking | Default values applied, volume distributions |
 
 Run the quality diagnostic suite:
@@ -137,7 +137,7 @@ Located in `analytics/sql/`:
 
 ```text
 devflow-engineering-analytics/
-├── analytics/                      # Antigravity Analytics & Quality Layer
+├── analytics/                      # Analytics & Quality Layer
 │   ├── contracts/                  # Schema contract definitions & validation
 │   │   ├── repository.py           # RepositoryContract & RepositoryRecord
 │   ├── metrics/                    # Derived metric calculations & fleet aggregation
@@ -241,12 +241,12 @@ python -m ruff format --check .
 
 - [x] Ingestion baseline: GitHub REST API client & metadata normalization (`DFI-006.1`)
 - [x] Analytics layer: Data contract enforcement & schema reflection (`RepositoryContract`)
-- [x] Analytics layer: Derived recency, engagement ratios, and fleet aggregations (`PortfolioSummary`)
+- [x] Analytics layer: Derived recency, community interest ratios, and fleet aggregations (`PortfolioSummary`)
 - [x] Data quality layer: Programmatic rule engine with ERROR/WARNING classification (16 rules)
 - [x] SQL Modeling: BigQuery-ready staging, intermediate, and dimensional marts
 - [x] Comprehensive offline unit, integration, contract, regression, and warehouse acceptance suite
 - [x] Integration preparation: Acceptance checklist defined (`docs/integration_acceptance_checklist.md`)
-- [x] Codex Integration: Local raw/normalized persistence, manifests, analytics reports, and mock-tested BigQuery adapter
+- [x] Pipeline Integration: Local raw/normalized persistence, manifests, analytics reports, and mock-tested BigQuery adapter
 - [x] V1 orchestration: Reproducible Python entrypoint with run context and stage status
 - [x] CI Pipeline: GitHub Actions compilation, Ruff, and pytest gates
 - [ ] Managed scheduling: Airflow/Dagster deployment (optional V2)

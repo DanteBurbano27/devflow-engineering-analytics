@@ -66,7 +66,7 @@ The analytics layer accepts either `ingestion.github.repository_metadata.Reposit
 | 14 | `pushed_at` | `datetime` | Yes | Nullable timezone-aware UTC timestamp |
 | 15 | `stars_count` | `int` | No | Non-negative integer (`>= 0`) |
 | 16 | `forks_count` | `int` | No | Non-negative integer (`>= 0`) |
-| 17 | `open_issues_count` | `int` | No | Non-negative integer (`>= 0`) |
+| 17 | `open_issues_count` | `int` | No | Non-negative integer (`>= 0`). Note: GitHub includes PRs in this count. |
 | 18 | `subscribers_count` | `int` | No | Non-negative integer (`>= 0`) |
 | 19 | `size_kb` | `int` | No | Non-negative integer (`>= 0`) |
 | 20 | `html_url` | `str` | No | Valid HTTP/HTTPS web URL string |

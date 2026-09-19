@@ -56,7 +56,7 @@ flowchart LR
     end
 
     subgraph CONSUMPTION["Data Consumption"]
-        LOOKER["Looker Studio Dashboard"]
+        LOOKER["Looker Studio Dashboard (Planned)"]
         DOCS["dbt Documentation"]
     end
 

@@ -59,7 +59,7 @@ enriched AS (
             ELSE 'LARGE'
         END AS size_category,
 
-        -- 3. Technical & Engagement Ratios (zero-division safe)
+        -- 3. Technical & Community Ratios (zero-division safe)
         ROUND(COALESCE(SAFE_DIVIDE(forks_count, stars_count), 0.0), 4) AS fork_to_star_ratio,
         ROUND(COALESCE(SAFE_DIVIDE(open_issues_count, stars_count), 0.0), 4) AS issue_to_star_ratio,
         ROUND(COALESCE(SAFE_DIVIDE(stars_count, forks_count), 0.0), 4) AS star_to_fork_ratio,
