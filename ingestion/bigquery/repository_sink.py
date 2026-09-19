@@ -90,11 +90,14 @@ class BigQueryRepositorySink:
         if not rows:
             return RepositoryWriteResult(rows_attempted=0, rows_written=0)
 
-        errors = self._client.insert_rows_json(
-            self._table,
-            rows,
-            row_ids=row_ids,
-        )
+        try:
+            errors = self._client.insert_rows_json(
+                self._table,
+                rows,
+                row_ids=row_ids,
+            )
+        except Exception:
+            raise BigQueryRepositoryWriteError("BigQuery insert failed.") from None
         if errors:
             raise BigQueryRepositoryWriteError(
                 f"BigQuery rejected {len(errors)} repository row(s)."
@@ -126,6 +129,15 @@ def _prepare_row(record: Mapping[str, Any], *, run_id: str) -> dict[str, Any]:
         raise ValueError(
             "Repository record is missing required fields: "
             + ", ".join(sorted(missing_fields))
+        )
+
+    null_required_fields = {
+        field_name for field_name in required_fields if record[field_name] is None
+    }
+    if null_required_fields:
+        raise ValueError(
+            "Repository record contains null required fields: "
+            + ", ".join(sorted(null_required_fields))
         )
 
     row = {"run_id": run_id}

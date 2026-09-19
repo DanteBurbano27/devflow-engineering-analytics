@@ -13,6 +13,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
+from analytics.contracts.repository import ContractValidationError
 from analytics.service import AnalyticsService, DataQualityValidationError
 from ingestion.common.config import ConfigurationError, Settings
 from ingestion.common.logging import configure_logging
@@ -42,6 +43,7 @@ class PipelineStageStatus(StrEnum):
     """Status of one pipeline stage."""
 
     SUCCESS = "success"
+    PARTIAL_SUCCESS = "partial_success"
     FAILED = "failed"
     SKIPPED = "skipped"
 
@@ -201,7 +203,12 @@ def run_pipeline(
             message="Pipeline outputs could not be published.",
         )
 
-    stages.append(_stage("batch", PipelineStageStatus.SUCCESS))
+    batch_stage_status = {
+        "success": PipelineStageStatus.SUCCESS,
+        "partial_success": PipelineStageStatus.PARTIAL_SUCCESS,
+        "failed": PipelineStageStatus.FAILED,
+    }[batch_result.status]
+    stages.append(_stage("batch", batch_stage_status))
 
     if batch_result.repositories_succeeded == 0:
         stages.extend(_skipped_stages("quality", "analytics"))
@@ -218,17 +225,26 @@ def run_pipeline(
             batch_result=batch_result,
             extracted_at=extracted_at,
         )
-    except (DataQualityValidationError, OSError, ValueError) as exc:
-        stages.append(_stage("quality", PipelineStageStatus.FAILED))
-        stages.append(_stage("analytics", PipelineStageStatus.SKIPPED))
+    except _PipelineStageFailure as failure:
+        if failure.stage == "quality":
+            stages.append(_stage("quality", PipelineStageStatus.FAILED))
+            stages.append(_stage("analytics", PipelineStageStatus.SKIPPED))
+        else:
+            stages.append(_stage("quality", PipelineStageStatus.SUCCESS))
+            stages.append(_stage("analytics", PipelineStageStatus.FAILED))
+        _record_pipeline_failure(
+            batch_result=batch_result,
+            failure_stage=failure.stage,
+            error_type=type(failure.error).__name__,
+        )
         logger.error(
-            "DevFlow pipeline analytics gate failed.",
+            "DevFlow pipeline post-extraction stage failed.",
             extra={
                 "operation": "devflow_pipeline",
                 "run_id": run_id,
-                "stage": "quality",
+                "stage": failure.stage,
                 "status": "failed",
-                "error_type": type(exc).__name__,
+                "error_type": type(failure.error).__name__,
             },
         )
         return _post_batch_failed_result(
@@ -236,7 +252,8 @@ def run_pipeline(
             started_at=started_at,
             extracted_at=extracted_at,
             stages=stages,
-            error=exc,
+            error=failure.error,
+            failure_stage=failure.stage,
         )
 
     stages.append(_stage("quality", PipelineStageStatus.SUCCESS))
@@ -267,14 +284,21 @@ def _run_analytics(
     extracted_at: datetime,
 ) -> Path:
     """Validate normalized output, run quality and analytics, and publish a report."""
-    records = _load_json_lines(batch_result.normalized_path)
-    metrics, quality_result, portfolio = AnalyticsService().process_batch(
-        records,
-        reference_time=extracted_at,
-        fail_on_contract_error=True,
-    )
-    if not quality_result.is_valid:
-        raise DataQualityValidationError(quality_result)
+    try:
+        records = _load_json_lines(batch_result.normalized_path)
+    except (OSError, ValueError) as exc:
+        raise _PipelineStageFailure("quality", exc) from exc
+
+    try:
+        metrics, quality_result, portfolio = AnalyticsService().process_batch(
+            records,
+            reference_time=extracted_at,
+            fail_on_contract_error=True,
+        )
+        if not quality_result.is_valid:
+            raise DataQualityValidationError(quality_result)
+    except (ContractValidationError, DataQualityValidationError) as exc:
+        raise _PipelineStageFailure("quality", exc) from exc
 
     analytics_path = (
         batch_result.output_root
@@ -285,25 +309,37 @@ def _run_analytics(
         / f"run_id={batch_result.run_id}"
         / "report.json"
     )
-    report = {
-        "meta": {
-            "run_id": batch_result.run_id,
-            "generated_at": extracted_at.isoformat(),
-            "total_input_records": len(records),
-            "processed_records": len(metrics),
-        },
-        "quality": quality_result.to_dict(),
-        "portfolio": portfolio.to_dict(),
-        "repositories": [metric.to_dict() for metric in metrics],
-    }
-    _write_json_atomically(analytics_path, report)
-    _enrich_manifest(
-        batch_result=batch_result,
-        analytics_path=analytics_path,
-        analytics_records_written=len(metrics),
-        quality_summary=quality_result.to_dict()["summary"],
-    )
+    try:
+        report = {
+            "meta": {
+                "run_id": batch_result.run_id,
+                "generated_at": extracted_at.isoformat(),
+                "total_input_records": len(records),
+                "processed_records": len(metrics),
+            },
+            "quality": quality_result.to_dict(),
+            "portfolio": portfolio.to_dict(),
+            "repositories": [metric.to_dict() for metric in metrics],
+        }
+        _write_json_atomically(analytics_path, report)
+        _enrich_manifest(
+            batch_result=batch_result,
+            analytics_path=analytics_path,
+            analytics_records_written=len(metrics),
+            quality_summary=quality_result.to_dict()["summary"],
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        raise _PipelineStageFailure("analytics", exc) from exc
     return analytics_path
+
+
+class _PipelineStageFailure(Exception):
+    """Carry a safe stage classification for an expected pipeline failure."""
+
+    def __init__(self, stage: str, error: Exception) -> None:
+        super().__init__(stage)
+        self.stage = stage
+        self.error = error
 
 
 def _load_json_lines(path: Path) -> list[dict[str, Any]]:
@@ -346,6 +382,38 @@ def _enrich_manifest(
         }
     )
     _write_json_atomically(batch_result.manifest_path, manifest, replace=True)
+
+
+def _record_pipeline_failure(
+    *,
+    batch_result: RepositoryBatchResult,
+    failure_stage: str,
+    error_type: str,
+) -> None:
+    """Record the terminal pipeline failure without replacing extraction evidence."""
+    try:
+        with batch_result.manifest_path.open(encoding="utf-8") as manifest_file:
+            manifest = json.load(manifest_file)
+        if not isinstance(manifest, dict):
+            raise ValueError("Execution manifest must be a JSON object.")
+        manifest.update(
+            {
+                "pipeline_status": PipelineStatus.FAILED.value,
+                "pipeline_failure_stage": failure_stage,
+                "pipeline_error_type": error_type,
+            }
+        )
+        _write_json_atomically(batch_result.manifest_path, manifest, replace=True)
+    except (OSError, ValueError):
+        logger.error(
+            "DevFlow pipeline failure could not be recorded in the manifest.",
+            extra={
+                "operation": "devflow_pipeline",
+                "run_id": batch_result.run_id,
+                "stage": failure_stage,
+                "status": "failed",
+            },
+        )
 
 
 def _write_json_atomically(
@@ -478,6 +546,7 @@ def _post_batch_failed_result(
     extracted_at: datetime,
     stages: list[PipelineStageResult],
     error: Exception,
+    failure_stage: str,
 ) -> PipelineResult:
     """Return a safe failure while preserving committed extraction outputs."""
     return PipelineResult(
@@ -493,5 +562,8 @@ def _post_batch_failed_result(
         manifest_path=batch_result.manifest_path,
         stages=tuple(stages),
         error_type=type(error).__name__,
-        error_message="Normalized output failed quality or analytics validation.",
+        error_message={
+            "quality": "Normalized output failed quality validation.",
+            "analytics": "Analytics output could not be published.",
+        }[failure_stage],
     )

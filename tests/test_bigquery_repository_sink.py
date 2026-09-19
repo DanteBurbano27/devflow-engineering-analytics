@@ -109,6 +109,21 @@ def test_write_rejects_duplicate_repository_identity() -> None:
     client.insert_rows_json.assert_not_called()
 
 
+def test_write_rejects_null_required_field_before_client_call() -> None:
+    """Required BigQuery columns must never be submitted as null."""
+    client = Mock(spec=BigQueryInsertClient)
+    record = build_record()
+    record["repository_name"] = None
+
+    with pytest.raises(ValueError, match="null required fields: repository_name"):
+        BigQueryRepositorySink(client, table="project.dataset.repositories").write(
+            [record],
+            run_id="run-123",
+        )
+
+    client.insert_rows_json.assert_not_called()
+
+
 def test_write_raises_sanitized_error_when_bigquery_rejects_rows() -> None:
     """Provider error bodies must not be copied into application exceptions."""
     client = Mock(spec=BigQueryInsertClient)
@@ -125,6 +140,24 @@ def test_write_raises_sanitized_error_when_bigquery_rejects_rows() -> None:
     message = str(exception_info.value)
     assert "simulated-secret" not in message
     assert "Authorization" not in message
+
+
+def test_write_sanitizes_client_exception() -> None:
+    """Transport and authentication details must not escape the adapter boundary."""
+    client = Mock(spec=BigQueryInsertClient)
+    client.insert_rows_json.side_effect = RuntimeError(
+        "Authorization: simulated-secret"
+    )
+
+    with pytest.raises(BigQueryRepositoryWriteError) as exception_info:
+        BigQueryRepositorySink(client, table="project.dataset.repositories").write(
+            [build_record()],
+            run_id="run-123",
+        )
+
+    message = str(exception_info.value)
+    assert message == "BigQuery insert failed."
+    assert exception_info.value.__cause__ is None
 
 
 def test_empty_batch_does_not_call_client() -> None:
