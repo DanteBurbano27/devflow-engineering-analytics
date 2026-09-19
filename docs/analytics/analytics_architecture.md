@@ -2,7 +2,7 @@
 
 ## 1. Purpose and Overview
 
-The **Analytics Layer** in DevFlow Intelligence serves as the analytical contract, quality assurance gate, and derived metrics engine bridging raw GitHub metadata ingestion and downstream cloud data warehousing (Google BigQuery) and consumption (Looker Studio / APIs).
+The **Analytics Layer** in DevFlow Intelligence serves as the analytical contract, quality assurance gate, and derived metrics engine bridging raw GitHub metadata ingestion and downstream cloud data warehousing (Google BigQuery) and consumption (Looker Studio - Planned V2 / APIs).
 
 It transforms point-in-time operational metadata into structured, reproducible analytical records with derived activity indicators, technical ratios, and fleet aggregations.
 
@@ -80,7 +80,7 @@ The analytical contract enforces explicit typing, non-emptiness, and timezone se
 | `pushed_at` | `datetime` | Yes | No | UTC timezone-aware last commit push timestamp |
 | `stars_count` | `int` | No | No | Non-negative star count |
 | `forks_count` | `int` | No | No | Non-negative fork count |
-| `open_issues_count` | `int` | No | No | Non-negative open issues count |
+| `open_issues_count` | `int` | No | No | Non-negative open issues and pull requests count |
 | `subscribers_count` | `int` | No | No | Non-negative watcher count |
 | `size_kb` | `int` | No | No | Non-negative repository disk size in KB |
 | `html_url` | `str` | No | No | Valid web address URL |
@@ -102,14 +102,14 @@ The analytical contract enforces explicit typing, non-emptiness, and timezone se
   * **`LAST_90_DAYS`**: If $31 \le \text{days\_since\_last\_push} \le 90$
   * **`LAST_180_DAYS`**: If $91 \le \text{days\_since\_last\_push} \le 180$
   * **`OVER_180_DAYS`**: If $\text{days\_since\_last\_push} > 180$
-* **`activity_status`** Classification:
+* **`activity_status`** Classification (Note: 90 and 180-day thresholds are internal analytical rules, not official GitHub standards):
   * **`DISABLED`**: If `is_disabled == True`
   * **`ARCHIVED`**: If `is_archived == True`
   * **`INACTIVE`**: If `pushed_at is None` or `days_since_last_push > 180`
   * **`STALE`**: If $91 \le \text{days\_since\_last\_push} \le 180$
   * **`ACTIVE`**: If $\text{days\_since\_last\_push} \le 90$
 
-### 4.2 Defensible Engagement & Technical Ratios
+### 4.2 Defensible Community & Technical Ratios
 * **`fork_to_star_ratio`**:
   $$\text{fork\_to\_star\_ratio} = \frac{\text{forks\_count}}{\text{stars\_count}} \quad (\text{if } \text{stars\_count} > 0, \text{ else } 0.0)$$
 * **`issue_to_star_ratio`**:

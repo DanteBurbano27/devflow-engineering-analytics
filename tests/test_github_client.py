@@ -174,6 +174,36 @@ def test_get_all_pages_rejects_invalid_max_pages() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "http://api.github.com",
+        "https://token@api.github.com",
+        "https://api.github.com?token=simulated",
+    ],
+)
+def test_client_rejects_unsafe_api_base_url(base_url: str) -> None:
+    """Credentials must only be attached to a clean HTTPS API origin."""
+    with pytest.raises(ValueError, match="GitHub API base URL"):
+        GitHubClient(token="test-token", base_url=base_url)
+
+
+def test_get_all_pages_rejects_cross_origin_next_link() -> None:
+    """Pagination must not send the authenticated session to another origin."""
+    response = build_response(
+        payload=[{"id": 1}],
+        url="https://api.github.com/repos/apache/airflow/pulls",
+        link_header='<https://attacker.invalid/next>; rel="next"',
+    )
+    session = build_session(response)
+    client = GitHubClient(token="test-token", session=session)
+
+    with pytest.raises(GitHubAPIError, match="configured API origin"):
+        client.get_all_pages("/repos/apache/airflow/pulls")
+
+    session.get.assert_called_once()
+
+
 def test_get_retries_after_timeout() -> None:
     """A timeout must be retried before returning a successful response."""
     successful_response = build_response(

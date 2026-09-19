@@ -77,7 +77,7 @@ devflow_analytics.dim_repositories   devflow_analytics.fct_repository_snapshots
 
 ### 2.5 Marts: Fleet Aggregations
 * **`agg_language_summary`**: Language-level breakdown of repository counts, star counts, averages, and active percentages.
-* **`agg_owner_summary`**: Organization-level rollup showing portfolio ownership volume, total engagement, and technology stack spread.
+* **`agg_owner_summary`**: Organization-level rollup showing portfolio ownership volume, total community interest, and technology stack spread.
 
 ---
 

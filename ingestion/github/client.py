@@ -18,6 +18,7 @@ from requests.exceptions import (
     Timeout,
 )
 
+from ingestion.common.url import has_same_https_origin, normalize_https_base_url
 from ingestion.github.exceptions import (
     GitHubAPIError,
     GitHubAuthenticationError,
@@ -70,7 +71,7 @@ class GitHubClient:
         if backoff_seconds < 0:
             raise ValueError("backoff_seconds cannot be negative.")
 
-        self._base_url = base_url.rstrip("/")
+        self._base_url = normalize_https_base_url(base_url)
         self._timeout_seconds = timeout_seconds
         self._max_retries = max_retries
         self._backoff_seconds = backoff_seconds
@@ -161,6 +162,10 @@ class GitHubClient:
             next_url = response.links.get("next", {}).get("url")
 
             if isinstance(next_url, str):
+                if not has_same_https_origin(next_url, self._base_url):
+                    raise GitHubAPIError(
+                        "GitHub pagination URL is outside the configured API origin."
+                    )
                 url = next_url
             else:
                 url = ""

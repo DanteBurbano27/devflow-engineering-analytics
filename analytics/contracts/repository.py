@@ -200,7 +200,7 @@ class RepositoryContract:
                 "int",
                 False,
                 False,
-                "Number of open issues (non-negative)",
+                "Number of open issues and pull requests (non-negative)",
             ),
             ContractFieldDefinition(
                 "subscribers_count",

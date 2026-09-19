@@ -167,7 +167,7 @@ class GitHubRepositoryBatch:
             extraction_date=extracted_at.date().isoformat(),
             run_id=run_id,
         )
-        _reject_existing_outputs(paths)
+        _reserve_run(paths)
 
         logger.info(
             "GitHub repository batch started.",
@@ -354,6 +354,25 @@ def _reject_existing_outputs(paths: _OutputPaths) -> None:
         raise FileExistsError(f"Batch output already exists: {existing[0]}")
 
 
+def _reserve_run(paths: _OutputPaths) -> None:
+    """Reserve one run identifier before extraction begins.
+
+    The run-specific manifest directory is the ownership marker. Creating its
+    leaf directory with ``exist_ok=False`` is atomic on supported local
+    filesystems, so concurrent processes cannot both publish the same run.
+    Keeping the reservation after a failed attempt also prevents a later
+    process from mistaking a potentially partial run for a new one.
+    """
+    _reject_existing_outputs(paths)
+
+    try:
+        paths.manifest.parent.mkdir(parents=True, exist_ok=False)
+    except FileExistsError as exc:
+        raise FileExistsError(
+            f"Batch run is already reserved: {paths.manifest.parent}"
+        ) from exc
+
+
 def _safe_repository_error(
     repository: RepositorySpec,
     error: Exception,
@@ -496,6 +515,8 @@ def _write_json_lines_temporary(
         for record in records:
             temporary_file.write(json.dumps(record, ensure_ascii=False))
             temporary_file.write("\n")
+        temporary_file.flush()
+        os.fsync(temporary_file.fileno())
 
 
 def _write_json_temporary(
@@ -508,3 +529,5 @@ def _write_json_temporary(
     ) as temporary_file:
         json.dump(document, temporary_file, ensure_ascii=False, indent=2)
         temporary_file.write("\n")
+        temporary_file.flush()
+        os.fsync(temporary_file.fileno())

@@ -3,7 +3,7 @@
 -- Layer: Marts (Fact Table)
 -- Dialect: Google Cloud BigQuery
 -- Description: Historical periodic snapshot fact table capturing metrics,
---              engagement velocity, and health counters per repository extraction.
+--              community velocity, and health counters per repository extraction.
 -- Partition By: snapshot_date (DATE(snapshot_timestamp))
 -- Cluster By: repository_id, language
 -- =============================================================================

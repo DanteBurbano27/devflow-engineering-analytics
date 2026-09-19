@@ -480,6 +480,46 @@ def test_atomic_writer_rejects_existing_run_outputs(tmp_path: Path) -> None:
         )
 
 
+def test_batch_reserves_run_before_extraction_to_prevent_concurrent_overwrite(
+    tmp_path: Path,
+) -> None:
+    """Concurrent batches with one run id must not both reach extraction."""
+    times = [datetime(2026, 7, 23, 17, 30, second, tzinfo=UTC) for second in (0, 1, 2)]
+    config_path = tmp_path / "repositories.json"
+    write_config(config_path, [{"owner": "apache", "name": "airflow"}])
+    config = load_repository_config(config_path)
+    competing_service = Mock(spec=GitHubRepositoryService)
+    first_service = Mock(spec=GitHubRepositoryService)
+
+    def overlap_after_reservation(
+        owner: str,
+        repository: str,
+        *,
+        extracted_at: datetime,
+    ) -> RepositoryExtractionResult:
+        with pytest.raises(FileExistsError, match="already reserved"):
+            GitHubRepositoryBatch(
+                competing_service,
+                clock=sequence_clock(times[:2]),
+            ).run(config, output_root=tmp_path / "data")
+        return build_result(extracted_at, owner=owner, repository=repository)
+
+    first_service.extract_repository_with_payload.side_effect = (
+        overlap_after_reservation
+    )
+
+    result = GitHubRepositoryBatch(
+        first_service,
+        clock=sequence_clock(times),
+    ).run(config, output_root=tmp_path / "data")
+
+    assert result.status == "success"
+    competing_service.extract_repository_with_payload.assert_not_called()
+    assert result.raw_path.exists()
+    assert result.normalized_path.exists()
+    assert result.manifest_path.exists()
+
+
 def test_atomic_writer_cleans_only_remaining_temporaries_on_publish_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

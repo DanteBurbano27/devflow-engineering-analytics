@@ -69,7 +69,7 @@ class RepositoryMetrics:
     recency_bucket: RecencyBucket
     is_active: bool
 
-    # Engagement & Technical Ratios
+    # Community & Technical Ratios
     fork_to_star_ratio: float
     issue_to_star_ratio: float
     star_to_fork_ratio: float
