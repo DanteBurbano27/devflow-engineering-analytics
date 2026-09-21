@@ -41,6 +41,9 @@ dbt_devflow/profiles.yml
 .vscode/
 .idea/
 
+# Local-only repository instructions
+/AGENTS.md
+
 # Sistema operativo
 .DS_Store
 Thumbs.db

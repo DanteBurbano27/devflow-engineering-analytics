@@ -1,22 +1,22 @@
 # Data Lineage
 
 ## Overview
-This document traces the path of GitHub repository metadata from the ingestion layer (Codex) to the analytical models (Antigravity).
+This document traces the path of GitHub repository metadata from the ingestion layer to the analytical models.
 
 ## Pipeline Stages
 
-1. **Ingestion Layer (Codex)**
+1. **Ingestion Layer**
    - **Source**: GitHub REST API
    - **Entity**: Raw JSON payload containing repository information.
    - **Transformation**: Flattened into a standardized dictionary.
 
-2. **Contract Validation & Quality (Antigravity)**
+2. **Contract Validation & Quality**
    - **Component**: `RepositoryContract`
    - **Action**: Enforces data types, timezones, and non-null constraints.
    - **Component**: `DataQualityEngine`
    - **Action**: Identifies anomalous metrics (e.g., negative sizes, missing default branches).
 
-3. **Metrics Calculation (Antigravity)**
+3. **Metrics Calculation**
    - **Component**: `RepositoryMetricCalculator`
    - **Action**: Augments the raw record with analytical fields:
      - `recency_bucket`
@@ -24,7 +24,7 @@ This document traces the path of GitHub repository metadata from the ingestion l
      - `issue_density_per_mb`
      - `issue_to_fork_ratio`
 
-4. **Data Warehouse (Antigravity SQL)**
+4. **Data Warehouse**
    - **Staging (`stg_github_repositories.sql`)**: Base view built from the raw extracted payloads.
    - **Intermediate (`int_repository_activity.sql`)**: Incorporates the metrics calculations directly in BigQuery.
    - **Marts (`dim_repositories.sql`, `fct_repository_snapshots.sql`, etc.)**: Fact and dimension tables utilized by BI tools.

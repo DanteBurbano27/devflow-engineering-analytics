@@ -4,8 +4,8 @@ from analytics.quality.engine import DataQualityEngine
 from tests.fixtures.golden_data import GOLDEN_REPOSITORIES
 
 
-def test_simulate_codex_integration():
-    """Simulates Codex's JSON/dict output flowing through the analytics pipeline."""
+def test_simulate_ingestion_integration():
+    """Simulates normalized ingestion output flowing through the analytics pipeline."""
     engine = DataQualityEngine()
     calculator = RepositoryMetricCalculator()
 

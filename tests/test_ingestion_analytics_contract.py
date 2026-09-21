@@ -1,4 +1,4 @@
-"""Acceptance tests for the real Codex-to-Antigravity normalized handoff."""
+"""Acceptance tests for the normalized ingestion-to-analytics boundary."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def _github_payload() -> dict[str, object]:
     }
 
 
-def test_codex_normalized_jsonl_runs_through_quality_and_analytics(
+def test_normalized_jsonl_runs_through_quality_and_analytics(
     tmp_path: Path,
 ) -> None:
     """The serialized ingestion record must satisfy the complete analytics gate."""

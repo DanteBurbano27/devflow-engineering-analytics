@@ -1,7 +1,7 @@
 # Performance Baseline
 
 ## Overview
-This document establishes the performance and memory baseline for the Antigravity analytics pipeline (Contract Validation, Data Quality Evaluation, and Metric Calculation) running locally via Python 3.14.6.
+This document establishes the performance and memory baseline for the analytics pipeline (Contract Validation, Data Quality Evaluation, and Metric Calculation) running locally via Python 3.14.6.
 
 ## Benchmark Results
 

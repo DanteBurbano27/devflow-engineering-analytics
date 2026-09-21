@@ -1,7 +1,7 @@
 # Integration Simulation
 
 ## Overview
-This document outlines the simulated integration process between the Codex-owned data plane and the Antigravity-owned analytics plane. The simulation ensures that once the raw data is normalized by Codex, it flows seamlessly through our data quality, contract validation, and metric calculation layers.
+This document outlines the simulated integration process between the ingestion and analytics planes. The simulation ensures that normalized records flow through data quality, contract validation, and metric calculation layers.
 
 ## Simulation Pipeline
 1. **Contract Validation**: Incoming dictionaries or `RepositoryMetadata` objects are validated against the `RepositoryContract`. Any schema violation or type mismatch will halt the process immediately.

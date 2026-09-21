@@ -1,48 +1,10 @@
 # DevFlow Intelligence — Integration Acceptance Checklist
 
-This document establishes the technical criteria and boundary verification rules required to safely integrate the **Antigravity Analytics & Quality Layer** (`team/antigravity-analytics-quality`) with the **Codex Data Platform Layer** (`team/codex-data-platform`).
+This document establishes the technical criteria and boundary verification rules required to integrate the ingestion, analytics, and quality layers safely.
 
 ---
 
-## 1. Branch & Worktree Integrity
-
-- [x] **Branch Isolation**: Antigravity work is committed exclusively to `team/antigravity-analytics-quality`.
-- [x] **Worktree Independence**: Antigravity executes in its dedicated worktree (`C:\DataEngineering\devflow-antigravity`).
-- [x] **Upstream Alignment**: Antigravity branch is branched from `feature/dfi-006-repository-metadata`.
-- [x] **No Direct Merges**: Neither team merges directly to `main` without mutual sign-off and Pull Request approval.
-- [x] **Active PR Updated**: Pull Request #2 is updated directly via clean, semantic commits.
-
----
-
-## 2. File Ownership Boundaries
-
-Strict file demarcation prevents merge conflicts and maintains team accountability:
-
-| Subsystem / File Pattern | Responsible Team | Antigravity Status | Codex Status |
-|---|---|---|---|
-| `analytics/**` | Antigravity | **Hardened & Finalized** | Read-only |
-| `docs/analytics/**` | Antigravity | **Hardened & Finalized** | Read-only |
-| `docs/integration_acceptance_checklist.md` | Antigravity | **Hardened & Finalized** | Read-only |
-| `tests/test_analytics_*.py` | Antigravity | **Hardened & Finalized** | Read-only |
-| `tests/test_contract_*.py` | Antigravity | **Hardened & Finalized** | Read-only |
-| `tests/test_data_quality_*.py` | Antigravity | **Hardened & Finalized** | Read-only |
-| `tests/test_metrics_*.py` | Antigravity | **Hardened & Finalized** | Read-only |
-| `scripts/check_analytics.py` | Antigravity | **Hardened & Finalized** | Read-only |
-| `scripts/check_data_quality.py` | Antigravity | **Hardened & Finalized** | Read-only |
-| `ingestion/**` | Codex | Unmodified | Provided by data-platform layer |
-| `storage/**` | Codex | Unmodified | In integration / Data-platform layer |
-| `orchestration/**` | Codex | Unmodified | Planned / Data-platform layer |
-| `observability/**` | Codex | Unmodified | Planned / Data-platform layer |
-| `.github/**` | Codex | Unmodified | Provided by data-platform layer |
-| `pyproject.toml` | Codex | Unmodified | Provided by data-platform layer |
-| `requirements*.txt` | Codex | Unmodified | Provided by data-platform layer |
-| `.env*`, `.gitignore` | Codex | Unmodified | Provided by data-platform layer |
-
-- [x] **Zero Codex Files Modified**: `git diff origin/team/antigravity-analytics-quality` confirms zero touches to Codex-owned paths.
-
----
-
-## 3. Contract & Schema Compatibility (`RepositoryMetadata`)
+## 1. Contract & Schema Compatibility (`RepositoryMetadata`)
 
 The analytics layer accepts either `ingestion.github.repository_metadata.RepositoryMetadata` instances or dictionary mappings adhering to the 21-field contract.
 
@@ -77,15 +39,15 @@ The analytics layer accepts either `ingestion.github.repository_metadata.Reposit
 
 ---
 
-## 4. Raw-to-Normalized Data Handoff
+## 2. Raw-to-Normalized Data Handoff
 
 ```
 [Raw Ingestion JSON]
         │
-        ▼ (Codex Ingestion)
+        ▼ (Ingestion)
 [RepositoryMetadata instance]
         │
-        ▼ (Antigravity Contract Gate)
+        ▼ (Contract Gate)
 [RepositoryContract.validate(metadata)]
         │
         ├──► Invalid: raises ContractValidationError(details=[...])
@@ -113,7 +75,7 @@ The analytics layer accepts either `ingestion.github.repository_metadata.Reposit
 
 ---
 
-## 5. Data Quality Assurance Gates
+## 3. Data Quality Assurance Gates
 
 - [x] **Rule Count**: 16 deterministic rules (14 record-level, 2 batch-level).
 - [x] **Severity Separation**:
@@ -124,7 +86,7 @@ The analytics layer accepts either `ingestion.github.repository_metadata.Reposit
 
 ---
 
-## 6. BigQuery SQL Warehouse Models
+## 4. BigQuery SQL Warehouse Models
 
 The SQL models in `analytics/sql/` are static-tested for expected schema references and selected BigQuery-dialect statements. They have not been compiled or executed by BigQuery:
 
@@ -146,7 +108,7 @@ The SQL models in `analytics/sql/` are static-tested for expected schema referen
 
 ---
 
-## 7. Automated Test Suite & Code Quality
+## 5. Automated Test Suite & Code Quality
 
 - [x] **Test Isolation**: 100% offline, zero network requests, zero GitHub tokens, zero cloud credentials.
 - [x] **Synthetic Fixtures**: All tests run with deterministic synthetic data fixtures.
@@ -156,7 +118,7 @@ The SQL models in `analytics/sql/` are static-tested for expected schema referen
 
 ---
 
-## 8. Security & Environment Governance
+## 6. Security & Environment Governance
 
 - [x] **Credential Scan**: No known API tokens, passwords, or GCP service-account keys are tracked.
 - [x] **Environment Variable Ingestion**: `GITHUB_TOKEN` is optional for public repositories and is read from the environment when authenticated rate limits are needed.
@@ -164,9 +126,9 @@ The SQL models in `analytics/sql/` are static-tested for expected schema referen
 
 ---
 
-## 9. Minimum Dataset Produced by Codex for End-to-End Validation
+## 7. Minimum Ingestion Dataset for End-to-End Validation
 
-For the analytics and SQL layer to run without manual adjustments, Codex must provide an extraction batch fulfilling:
+For the analytics and SQL layer to run without manual adjustments, the ingestion layer must provide an extraction batch fulfilling:
 
 1. **Format**: Either a list of `RepositoryMetadata` Python objects or a JSON Lines / newline-delimited JSON payload matching `RepositoryRecord` fields.
 2. **Cardinality**: At least 1 valid repository record (e.g. `apache/airflow` or synthetic test repo).
@@ -176,10 +138,10 @@ For the analytics and SQL layer to run without manual adjustments, Codex must pr
 
 ---
 
-## 10. Verification Sign-Off
+## 8. Verification Sign-Off
 
 | Milestone | Target | Status | Responsible |
 |---|---|---|---|
-| Phase 1: Analytics & Quality Engine | Complete analytical layer | **PASSED** | Antigravity Team |
-| Phase 2B: Hardening & Integration Readiness | Contract tests, ratios, recency, SQL models, checklist | **PASSED** | Antigravity Team |
-| Final Integration: Codex Data Platform | Ingestion, local storage, Python orchestration, CI, mock-tested BigQuery adapter | **PASSED LOCALLY** | Codex Team |
+| Phase 1: Analytics & Quality Engine | Complete analytical layer | **PASSED** | Analytics layer |
+| Phase 2B: Hardening & Integration Readiness | Contract tests, ratios, recency, SQL models, checklist | **PASSED** | Analytics layer |
+| Final Integration | Ingestion, local storage, Python orchestration, CI, mock-tested BigQuery adapter | **PASSED LOCALLY** | Integrated pipeline |

@@ -10,10 +10,10 @@ We employ Semantic Versioning (SemVer) for the data contract:
 - **PATCH (v1.0.X)**: Non-breaking bug fixes (e.g., updating descriptions, refining quality rules internally).
 
 ## Backward Compatibility
-To ensure Codex and Antigravity teams can deploy independently:
-1. Codex must not drop any fields specified in the current major version.
-2. If Codex needs to add a new metric or field, it must be nullable or have a clear default in order to bump the MINOR version.
-3. The Antigravity pipeline will tolerate extra unknown fields from Codex but will strictly enforce the required schema fields.
+To allow ingestion and analytics components to evolve independently:
+1. The ingestion layer must not drop any fields specified in the current major version.
+2. New metrics or fields must be nullable or have a clear default for a MINOR version bump.
+3. The analytics pipeline tolerates extra unknown fields but strictly enforces the required schema fields.
 
 ## Breaking Changes & Deprecation
 1. A field slated for removal must first be marked as `DEPRECATED` in the documentation and warnings emitted in the data quality logs.
