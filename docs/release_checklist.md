@@ -1,15 +1,15 @@
 # Release Checklist
 
-## Pre-Release (Antigravity Analytics)
-- [ ] Ensure 100% test coverage using `py -3.14 -m pytest`.
-- [ ] Validate linting rules using `py -3.14 -m ruff check .`.
-- [ ] Confirm code formatting using `py -3.14 -m ruff format --check .`.
+## Pre-Release (Analytics)
+- [ ] Run the complete collected test suite using Python 3.12 or newer: `python -m pytest`.
+- [ ] Validate linting rules using `python -m ruff check .`.
+- [ ] Confirm code formatting using `python -m ruff format --check .`.
 - [ ] Run Integration Simulation (`tests/test_integration_simulation.py`) against Golden Data.
-- [ ] Verify BigQuery SQL scripts compile cleanly.
+- [ ] When a BigQuery project is available, compile and execute SQL against a disposable dataset; V1 tests are static only.
 
 ## Release Execution
-- [ ] Merge `team/antigravity-analytics-quality` to integration branch.
-- [ ] Validate downstream Codex outputs using the simulation constraints.
+- [ ] Review the release diff and CI result on the release PR.
+- [ ] Validate normalized outputs using the simulation constraints.
 
 ## Post-Release
-- [ ] Monitor metric deviation and quality error rates for the first 24 hours.
+- [ ] For a deployed scheduler, define and validate monitoring before enabling recurring runs.

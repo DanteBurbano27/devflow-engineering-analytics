@@ -2,7 +2,7 @@
 
 ## 1. Purpose and Overview
 
-The **Analytics Layer** in DevFlow Intelligence serves as the analytical contract, quality assurance gate, and derived metrics engine bridging raw GitHub metadata ingestion and downstream cloud data warehousing (Google BigQuery) and consumption (Looker Studio - Planned V2 / APIs).
+The **Analytics Layer** in DevFlow Intelligence is the implemented analytical contract, quality gate, and derived-metrics engine for GitHub metadata. BigQuery SQL and Looker Studio appear here as target-state consumers: the SQL is static-tested, while no BigQuery dataset or Looker Studio dashboard is deployed.
 
 It transforms point-in-time operational metadata into structured, reproducible analytical records with derived activity indicators, technical ratios, and fleet aggregations.
 
@@ -53,7 +53,7 @@ flowchart TD
 1. **Explicit Data Contracts**: Upstream API changes or schema drift cannot silently propagate. Records are validated against an immutable analytical contract schema (`RepositoryContract`).
 2. **Non-Destructive Quality Gates**: The `DataQualityEngine` evaluates data integrity without mutating incoming records. Errors halt or isolate tainted records; warnings flag anomalies.
 3. **Reproducibility & Determinism**: All temporal calculations (e.g. `days_since_last_push`) evaluate relative to `extracted_at` unless explicitly overridden, eliminating non-deterministic temporal drift across execution environments.
-4. **Separation of Concerns**: Python implements contract enforcement, programmatic validation, and rapid local summary analytics. BigQuery SQL models implement warehouse-scale transformations, incremental materializations, and partitioning/clustering.
+4. **Separation of Concerns**: Python implements contract enforcement, programmatic validation, and local summary analytics. The BigQuery SQL files design warehouse transformations, incremental materializations, and partitioning/clustering; live execution remains unverified.
 5. **Zero External Framework Overhead**: The analytics engine utilizes standard Python library primitives (`dataclasses`, `datetime`, `enum`, `statistics`, `typing`), maximizing execution speed and eliminating brittle framework dependencies.
 
 ---
