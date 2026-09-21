@@ -2,7 +2,7 @@
 
 ## 1. Overview and Architecture
 
-DevFlow Intelligence transforms raw metadata into structured analytical layers inside **Google BigQuery**. The models are located under `analytics/sql/` and follow modern analytics engineering conventions.
+This document describes the intended **Google BigQuery** warehouse shape encoded by the SQL files under `analytics/sql/`. The models are static-tested for contract shape and critical BigQuery-dialect statements; they have not been compiled or executed against a provisioned BigQuery dataset.
 
 ```
                     devflow_raw.raw_repositories
@@ -85,4 +85,4 @@ devflow_analytics.dim_repositories   devflow_analytics.fct_repository_snapshots
 
 1. **Partition Pruning**: Always filter analytical queries on `snapshot_date` when querying `fct_repository_snapshots` to minimize BigQuery slot usage and query costs.
 2. **Clustering Efficiency**: Clustering on `(repository_id, language)` ensures that multi-repository filters avoid scanning irrelevant columnar blocks.
-3. **Idempotent Loads**: Deduplication via `QUALIFY ROW_NUMBER() ...` guarantees idempotency during pipeline backfills or replay runs.
+3. **Designed Replay Behavior**: Deduplication via `QUALIFY ROW_NUMBER() ...` is intended to make backfills and replay runs idempotent. This remains unverified in a live BigQuery dataset.

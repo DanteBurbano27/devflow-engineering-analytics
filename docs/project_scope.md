@@ -40,19 +40,19 @@ DevFlow Intelligence will consolidate this information into structured analytica
 
 ---
 
-## 3. Project objective
+## 3. Target-state objective
 
-Build a reproducible batch data pipeline that:
+The broader roadmap would build a reproducible batch data pipeline that:
 
 1. Extracts public repository activity from GitHub.
 2. Preserves raw source data for traceability.
-3. Loads the data into Google BigQuery.
-4. Cleans and transforms the data using dbt.
+3. Loads the data into Google BigQuery (not deployed in V1).
+4. Cleans and transforms the data using dbt (not implemented in V1).
 5. Creates a basic dimensional model.
 6. Generates software delivery metrics.
 7. Validates data quality.
-8. Automates pipeline execution using Apache Airflow.
-9. Presents the results through an analytical dashboard.
+8. Automates pipeline execution using Apache Airflow (planned V2).
+9. Presents the results through an analytical dashboard (planned V2).
 
 ---
 

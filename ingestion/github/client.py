@@ -43,11 +43,11 @@ logger = logging.getLogger(__name__)
 
 
 class GitHubClient:
-    """Client responsible for sending authenticated requests to GitHub."""
+    """Client for authenticated or rate-limited public GitHub requests."""
 
     def __init__(
         self,
-        token: str,
+        token: str | None = None,
         base_url: str = "https://api.github.com",
         api_version: str = "2026-03-10",
         timeout_seconds: float = 30.0,
@@ -57,10 +57,7 @@ class GitHubClient:
         sleeper: Sleeper = time.sleep,
     ) -> None:
         """Initialize the GitHub API client."""
-        clean_token = token.strip()
-
-        if not clean_token:
-            raise ValueError("A GitHub token is required.")
+        clean_token = token.strip() if token else None
 
         if timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be greater than zero.")
@@ -78,14 +75,14 @@ class GitHubClient:
         self._session = session or requests.Session()
         self._sleeper = sleeper
 
-        self._session.headers.update(
-            {
-                "Accept": "application/vnd.github+json",
-                "Authorization": f"Bearer {clean_token}",
-                "X-GitHub-Api-Version": api_version,
-                "User-Agent": "devflow-engineering-analytics",
-            }
-        )
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": api_version,
+            "User-Agent": "devflow-engineering-analytics",
+        }
+        if clean_token:
+            headers["Authorization"] = f"Bearer {clean_token}"
+        self._session.headers.update(headers)
 
     def get(
         self,

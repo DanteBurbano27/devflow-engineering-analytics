@@ -233,6 +233,16 @@ def test_get_retries_after_timeout() -> None:
     sleeper.assert_called_once_with(1)
 
 
+def test_anonymous_client_omits_authorization_header() -> None:
+    """Public unauthenticated requests must not send an empty credential."""
+    session = Mock(spec=Session)
+    session.headers = {}
+
+    GitHubClient(session=session)
+
+    assert "Authorization" not in session.headers
+
+
 def test_get_retries_temporary_server_error() -> None:
     """A temporary server error must be retried."""
     temporary_failure = build_response(

@@ -1,8 +1,11 @@
 # DevFlow Intelligence — System Architecture
 
+> [!IMPORTANT]
+> This document is the target-state architecture. The implemented V1 boundary is GitHub repository metadata -> local raw/normalized JSONL -> contract and 16-rule quality gate -> local analytics report and manifest. BigQuery is represented by a mock-tested adapter and static-tested SQL; GH Archive, dbt, Airflow, deployed BigQuery datasets, and Looker Studio are not implemented or deployed.
+
 ## 1. Architecture purpose
 
-This document describes how DevFlow Intelligence collects, stores, transforms, validates and exposes public GitHub engineering activity.
+This document describes the intended architecture for collecting, storing, transforming, validating, and exposing public GitHub engineering activity.
 
 The architecture is designed as a daily batch pipeline focused on:
 
@@ -15,7 +18,7 @@ The architecture is designed as a daily batch pipeline focused on:
 
 ---
 
-## 2. High-level architecture
+## 2. Target-state architecture
 
 ```mermaid
 flowchart LR
