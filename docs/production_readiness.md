@@ -29,7 +29,7 @@ This audit records the test-backed implementation status of DevFlow Intelligence
 
 ### 7. End-to-End Analytics Simulation
 - **Status**: **READY**
-- **Details**: Acceptance tests serialize the Codex normalized envelope and execute contract, quality, metrics, report, and manifest enrichment.
+- **Details**: Acceptance tests serialize the normalized ingestion envelope and execute contract, quality, metrics, report, and manifest enrichment.
 
 ### 8. Streaming Processing
 - **Status**: **OPTIONAL V2**

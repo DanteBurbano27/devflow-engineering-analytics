@@ -1,10 +1,9 @@
 # Operational Runbook
 
-## Overview
 This runbook separates current V1 local operations from target-state warehouse operations.
 
 ## Daily Operations
-- Monitor execution logs for `ContractValidationError`. A spike in these errors indicates an upstream change in the GitHub API or Codex ingestion logic.
+- Monitor execution logs for `ContractValidationError`. A spike in these errors indicates an upstream change in the GitHub API or ingestion normalization logic.
 - Review `DataQualityEngine` errors and warnings against the 16-rule catalog; no historical reject-rate baseline is claimed.
 - **Target state only:** after a BigQuery deployment exists, monitor the jobs that execute models in `analytics/sql/`. V1 has no deployed Dataform/dbt run.
 

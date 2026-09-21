@@ -5,8 +5,8 @@ Analyzing engineering velocity and repository health across large organizations 
 
 ## The Architecture
 DevFlow Intelligence addresses this by splitting the responsibilities:
-- **Data Plane (Codex)**: Handles network resilience, API ingestion, and raw storage.
-- **Analytics Plane (Antigravity)**: Implements strict `Data Contracts`, evaluates records deterministically through a `Data Quality Engine`, and computes robust technical metrics using a `Metrics Calculator`.
+- **Data Plane**: Handles network resilience, API ingestion, normalization, and raw storage.
+- **Analytics Plane**: Implements strict `Data Contracts`, evaluates records deterministically through a `Data Quality Engine`, and computes robust technical metrics using a `Metrics Calculator`.
 
 ## Engineering Challenges
 - **Schema Evolution**: Handled via Semantic Versioning and strict isolation between teams.
