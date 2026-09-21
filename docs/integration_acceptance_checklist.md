@@ -1,10 +1,47 @@
 # DevFlow Intelligence — Integration Acceptance Checklist
 
-This document establishes the technical criteria and boundary verification rules required to integrate the ingestion, analytics, and quality layers safely.
+This document establishes the technical criteria and boundary verification rules required to safely integrate the **Analytics & Quality Layer** with the **Ingestion & Storage Data Platform Layer**.
 
 ---
 
-## 1. Contract & Schema Compatibility (`RepositoryMetadata`)
+## 1. Subsystem & Integration Integrity
+
+- [x] **Subsystem Isolation**: Analytics and quality engine isolated in `analytics/`.
+- [x] **Contract Independence**: Clean interface boundary between ingestion data structures and analytics contracts.
+- [x] **Upstream Alignment**: Ingestion normalization matches contract expectations.
+- [x] **Continuous Integration**: Validated on every commit via automated GitHub Actions CI.
+
+---
+
+## 2. Subsystem Boundaries
+
+Strict file demarcation maintains architectural clarity and modularity:
+
+| Subsystem / File Pattern | Responsible Layer | Status | Notes |
+|---|---|---|---|
+| `analytics/**` | Analytics & Quality | **Hardened & Finalized** | Metric calculators, contracts, and quality engine |
+| `docs/analytics/**` | Analytics & Quality | **Hardened & Finalized** | Documentation |
+| `docs/integration_acceptance_checklist.md` | Analytics & Quality | **Hardened & Finalized** | Integration specification |
+| `tests/test_analytics_*.py` | Analytics & Quality | **Hardened & Finalized** | Unit tests |
+| `tests/test_contract_*.py` | Analytics & Quality | **Hardened & Finalized** | Contract assertions |
+| `tests/test_data_quality_*.py` | Analytics & Quality | **Hardened & Finalized** | 16-rule data quality tests |
+| `tests/test_metrics_*.py` | Analytics & Quality | **Hardened & Finalized** | Metric calculations |
+| `scripts/check_analytics.py` | Analytics & Quality | **Hardened & Finalized** | Validation script |
+| `scripts/check_data_quality.py` | Analytics & Quality | **Hardened & Finalized** | Validation script |
+| `ingestion/**` | Ingestion Layer | Finalized | GitHub client, rate limiting, and extraction |
+| `storage/**` | Storage Layer | Finalized | Partitioned JSON storage and BigQuery adapter |
+| `orchestration/**` | Orchestration Layer | Finalized | Reproducible pipeline entrypoint |
+| `observability/**` | Observability Layer | Finalized | Run reports and execution manifests |
+| `.github/**` | CI/CD | Finalized | GitHub Actions workflow validation |
+| `pyproject.toml` | Build Configuration | Finalized | Runtime and test dependencies |
+| `requirements*.txt` | Dependencies | Finalized | Pinned dependencies |
+| `.env*`, `.gitignore` | Environment Configuration | Finalized | Local dev configuration and hygiene |
+
+- [x] **Subsystem Demarcation**: Verified clean separation between ingestion and analytical layers.
+
+---
+
+## 3. Contract & Schema Compatibility (`RepositoryMetadata`)
 
 The analytics layer accepts either `ingestion.github.repository_metadata.RepositoryMetadata` instances or dictionary mappings adhering to the 21-field contract.
 
@@ -39,7 +76,7 @@ The analytics layer accepts either `ingestion.github.repository_metadata.Reposit
 
 ---
 
-## 2. Raw-to-Normalized Data Handoff
+## 4. Raw-to-Normalized Data Handoff
 
 ```
 [Raw Ingestion JSON]
@@ -75,7 +112,7 @@ The analytics layer accepts either `ingestion.github.repository_metadata.Reposit
 
 ---
 
-## 3. Data Quality Assurance Gates
+## 5. Data Quality Assurance Gates
 
 - [x] **Rule Count**: 16 deterministic rules (14 record-level, 2 batch-level).
 - [x] **Severity Separation**:
@@ -86,7 +123,7 @@ The analytics layer accepts either `ingestion.github.repository_metadata.Reposit
 
 ---
 
-## 4. BigQuery SQL Warehouse Models
+## 6. BigQuery SQL Warehouse Models
 
 The SQL models in `analytics/sql/` are static-tested for expected schema references and selected BigQuery-dialect statements. They have not been compiled or executed by BigQuery:
 
@@ -108,7 +145,7 @@ The SQL models in `analytics/sql/` are static-tested for expected schema referen
 
 ---
 
-## 5. Automated Test Suite & Code Quality
+## 7. Automated Test Suite & Code Quality
 
 - [x] **Test Isolation**: 100% offline, zero network requests, zero GitHub tokens, zero cloud credentials.
 - [x] **Synthetic Fixtures**: All tests run with deterministic synthetic data fixtures.
@@ -118,7 +155,7 @@ The SQL models in `analytics/sql/` are static-tested for expected schema referen
 
 ---
 
-## 6. Security & Environment Governance
+## 8. Security & Environment Governance
 
 - [x] **Credential Scan**: No known API tokens, passwords, or GCP service-account keys are tracked.
 - [x] **Environment Variable Ingestion**: `GITHUB_TOKEN` is optional for public repositories and is read from the environment when authenticated rate limits are needed.
@@ -126,7 +163,7 @@ The SQL models in `analytics/sql/` are static-tested for expected schema referen
 
 ---
 
-## 7. Minimum Ingestion Dataset for End-to-End Validation
+## 9. Minimum Dataset Produced by Ingestion Layer for End-to-End Validation
 
 For the analytics and SQL layer to run without manual adjustments, the ingestion layer must provide an extraction batch fulfilling:
 
@@ -138,10 +175,10 @@ For the analytics and SQL layer to run without manual adjustments, the ingestion
 
 ---
 
-## 8. Verification Sign-Off
+## 10. Verification Sign-Off
 
 | Milestone | Target | Status | Responsible |
 |---|---|---|---|
-| Phase 1: Analytics & Quality Engine | Complete analytical layer | **PASSED** | Analytics layer |
-| Phase 2B: Hardening & Integration Readiness | Contract tests, ratios, recency, SQL models, checklist | **PASSED** | Analytics layer |
-| Final Integration | Ingestion, local storage, Python orchestration, CI, mock-tested BigQuery adapter | **PASSED LOCALLY** | Integrated pipeline |
+| Phase 1: Analytics & Quality Engine | Complete analytical layer | **PASSED** | Analytics Engine |
+| Phase 2B: Hardening & Integration Readiness | Contract tests, ratios, recency, SQL models, checklist | **PASSED** | Analytics Engine |
+| Final Integration: Ingestion Data Platform | Ingestion, local storage, Python orchestration, CI, mock-tested BigQuery adapter | **PASSED LOCALLY** | Data Platform Layer |

@@ -5,7 +5,7 @@ Analyzing engineering velocity and repository health across large organizations 
 
 ## The Architecture
 DevFlow Intelligence addresses this by splitting the responsibilities:
-- **Data Plane**: Handles network resilience, API ingestion, and raw storage.
+- **Data Plane**: Handles network resilience, API ingestion, normalization, and raw storage.
 - **Analytics Plane**: Implements strict `Data Contracts`, evaluates records deterministically through a `Data Quality Engine`, and computes robust technical metrics using a `Metrics Calculator`.
 
 ## Engineering Challenges
