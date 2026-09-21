@@ -1,10 +1,10 @@
 # Operational Runbook
 
 ## Overview
-This runbook covers the standard operating procedures for the Antigravity Analytics plane in DevFlow Intelligence.
+This runbook covers the standard operating procedures for the Analytics plane in DevFlow Intelligence.
 
 ## Daily Operations
-- Monitor execution logs for `ContractValidationError`. A spike in these errors indicates an upstream change in the GitHub API or Codex ingestion logic.
+- Monitor execution logs for `ContractValidationError`. A spike in these errors indicates an upstream change in the GitHub API or ingestion normalization logic.
 - Verify that `DataQualityEngine` reject rates remain stable (historically < 1%).
 - Check BigQuery Dataform/dbt runs for the models in `analytics/sql/`.
 

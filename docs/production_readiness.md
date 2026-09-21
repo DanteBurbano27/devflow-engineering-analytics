@@ -1,7 +1,7 @@
 # Production Readiness Audit
 
 ## Audit Summary
-This audit certifies the status of the DevFlow Intelligence pipeline components handled by the Antigravity Analytics team.
+This audit certifies the status of the DevFlow Intelligence pipeline components handled by the Analytics and Data Quality team.
 
 ### 1. Data Contracts
 - **Status**: **READY**
@@ -29,7 +29,7 @@ This audit certifies the status of the DevFlow Intelligence pipeline components 
 
 ### 7. End-to-End Analytics Simulation
 - **Status**: **READY**
-- **Details**: Acceptance tests serialize the Codex normalized envelope and execute contract, quality, metrics, report, and manifest enrichment.
+- **Details**: Acceptance tests serialize the normalized ingestion envelope and execute contract, quality, metrics, report, and manifest enrichment.
 
 ### 8. Streaming Processing
 - **Status**: **OPTIONAL V2**
