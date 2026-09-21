@@ -126,7 +126,7 @@ The analytics layer accepts either `ingestion.github.repository_metadata.Reposit
 
 ## 6. BigQuery SQL Warehouse Models
 
-All SQL models in `analytics/sql/` are validated for Google Cloud BigQuery compatibility:
+The SQL models in `analytics/sql/` are static-tested for expected schema references and selected BigQuery-dialect statements. They have not been compiled or executed by BigQuery:
 
 1. **`stg_github_repositories.sql`** (Staging):
    - Type casting and null coalescing.
@@ -150,7 +150,7 @@ All SQL models in `analytics/sql/` are validated for Google Cloud BigQuery compa
 
 - [x] **Test Isolation**: 100% offline, zero network requests, zero GitHub tokens, zero cloud credentials.
 - [x] **Synthetic Fixtures**: All tests run with deterministic synthetic data fixtures.
-- [x] **Pytest Pass**: All 109+ tests pass in $< 1.0\text{s}$.
+- [x] **Pytest Pass**: All 155 collected tests pass locally on Python 3.12.
 - [x] **Linter Compliance**: `ruff check .` passes with zero errors or warnings.
 - [x] **Formatting Compliance**: `ruff format --check .` passes with line length $\le 88$.
 
@@ -158,8 +158,8 @@ All SQL models in `analytics/sql/` are validated for Google Cloud BigQuery compa
 
 ## 8. Security & Environment Governance
 
-- [x] **Zero Hardcoded Secrets**: No API tokens, passwords, or GCP service account keys in codebase.
-- [x] **Environment Variable Ingestion**: Relies strictly on `GITHUB_TOKEN` from environment.
+- [x] **Credential Scan**: No known API tokens, passwords, or GCP service-account keys are tracked.
+- [x] **Environment Variable Ingestion**: `GITHUB_TOKEN` is optional for public repositories and is read from the environment when authenticated rate limits are needed.
 - [x] **Standard Library Core**: Analytics engine requires zero external packages beyond standard Python library, minimizing supply chain vulnerabilities.
 
 ---

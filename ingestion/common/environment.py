@@ -3,7 +3,7 @@
 import sys
 from collections.abc import Sequence
 
-MINIMUM_PYTHON_VERSION = (3, 11)
+MINIMUM_PYTHON_VERSION = (3, 12)
 
 
 def is_supported_python(

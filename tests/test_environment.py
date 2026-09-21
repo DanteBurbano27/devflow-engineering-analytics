@@ -8,7 +8,7 @@ from ingestion.common.environment import is_supported_python
 
 def test_python_312_is_supported() -> None:
     """Python 3.12 must satisfy the minimum version."""
-    assert is_supported_python((3, 11, 0)) is True
+    assert is_supported_python((3, 12, 0)) is True
 
 
 def test_python_313_is_supported() -> None:
@@ -18,12 +18,21 @@ def test_python_313_is_supported() -> None:
 
 def test_python_311_is_not_supported() -> None:
     """Python 3.11 must not satisfy the minimum version."""
-    assert is_supported_python((3, 10, 9)) is False
+    assert is_supported_python((3, 11, 9)) is False
 
 
 def test_current_python_runtime_is_supported() -> None:
     """The active Python interpreter must satisfy the minimum version."""
     assert is_supported_python() is True
+
+
+def test_settings_allow_anonymous_public_github_access(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A token is optional for public API requests with lower rate limits."""
+    monkeypatch.setenv("GITHUB_TOKEN", "")
+
+    assert Settings.from_env().github_token is None
 
 
 @pytest.mark.parametrize(

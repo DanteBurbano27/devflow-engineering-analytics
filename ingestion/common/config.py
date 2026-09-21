@@ -18,7 +18,7 @@ class ConfigurationError(RuntimeError):
 class Settings:
     """Runtime settings required by the ingestion application."""
 
-    github_token: str
+    github_token: str | None
     github_api_base_url: str
     github_api_version: str
     github_timeout_seconds: float
@@ -31,12 +31,7 @@ class Settings:
         """Build application settings from environment variables."""
         load_dotenv()
 
-        github_token = os.getenv("GITHUB_TOKEN", "").strip()
-
-        if not github_token:
-            raise ConfigurationError(
-                "GITHUB_TOKEN is missing. Add it to the local .env file."
-            )
+        github_token = os.getenv("GITHUB_TOKEN", "").strip() or None
 
         try:
             github_api_base_url = normalize_https_base_url(
