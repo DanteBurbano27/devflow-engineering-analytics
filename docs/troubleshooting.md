@@ -4,10 +4,10 @@
 
 ### 1. ContractValidationError Spikes
 **Symptom**: Pipeline halts or drops many records with `ContractValidationError`.
-**Root Cause**: The upstream data source (ingestion layer) has modified the dictionary structure or dropped a required field (e.g., `visibility` or `default_branch`).
+**Root Cause**: The ingestion layer has modified the dictionary structure or dropped a required field (e.g., `visibility` or `default_branch`).
 **Action**:
 - Inspect the offending payload.
-- Review upstream schema changes to verify if the change was intentional.
+- Verify whether the upstream schema change was intentional.
 - If intentional, implement a MINOR or MAJOR version bump to `RepositoryContract`.
 
 ### 2. Unexpected Zero Ratios in Metrics

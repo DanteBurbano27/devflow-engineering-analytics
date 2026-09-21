@@ -139,10 +139,6 @@ docs/            architecture, lineage, runbook, limitations, and execution evid
 - CI uses read-only repository permissions and disables persisted checkout credentials.
 - Unit and analytical tests make no network or cloud calls; real API execution is a separate documented demonstration.
 
-## Development methodology
-
-The project was developed with AI-assisted parallel work across data-platform and analytics/quality concerns. That history is documented transparently in ADRs and integration notes. The portfolio evidence is the resulting code, deterministic tests, CI configuration, and reproducible execution rather than the orchestration method used to create it.
-
 ## Roadmap
 
 - [x] GitHub repository ingestion and metadata normalization

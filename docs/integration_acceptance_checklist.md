@@ -81,7 +81,7 @@ The analytics layer accepts either `ingestion.github.repository_metadata.Reposit
 ```
 [Raw Ingestion JSON]
         │
-        ▼ (Data Ingestion)
+        ▼ (Ingestion)
 [RepositoryMetadata instance]
         │
         ▼ (Contract Gate)

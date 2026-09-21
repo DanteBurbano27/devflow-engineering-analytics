@@ -5,7 +5,7 @@ from tests.fixtures.golden_data import GOLDEN_REPOSITORIES
 
 
 def test_simulate_ingestion_integration():
-    """Simulate ingestion JSON output flowing through analytics pipeline."""
+    """Simulates normalized ingestion output flowing through the analytics pipeline."""
     engine = DataQualityEngine()
     calculator = RepositoryMetricCalculator()
 
